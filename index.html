@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Spinner Wheel</title>
+<link rel="stylesheet" href="style/main.css">
+</head>
+<body>
+
+<div class="app">
+
+    <!-- ENTRY TABLE -->
+    <aside class="controls">
+
+        <h1>Wheel of Doom</h1>
+
+        <div class="toolbar">
+            <button id="addRowBtn">+ Add</button>
+
+            <button id="saveBoardBtn">Save</button>
+            <button id="loadBoardBtn">Load</button>
+
+            <button id="exportBtn">Export</button>
+            <button id="importBtn">Import</button>
+
+            <button id="copyBtn">Copy JSON</button>
+
+            <input type="file" id="importFile" hidden>
+        </div>
+
+        <table id="entryTable">
+            <thead>
+                <tr>
+                    <th>Tags</th>
+                    <th>Weight</th>
+                    <th>Entry</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <div id="tagFilters"></div>
+
+        <button id="spinBtn" class="primary">Spin</button>
+
+    </aside>
+
+    <!-- WHEEL -->
+    <main class="wheel-wrapper">
+        <div class="pointer"></div>
+        <canvas id="wheelCanvas" width="650" height="650"></canvas>
+    </main>
+
+</div>
+
+<div id="winnerModal" class="modal hidden">
+    <div class="modalBox">
+        <h2>🎉 Winner!</h2>
+        <div id="winnerText"></div>
+        <button id="closeModalBtn">Close</button>
+    </div>
+</div>
+
+<script src="script/main.js"></script>
+</body>
+</html>

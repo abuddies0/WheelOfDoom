@@ -1,0 +1,208 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+    background: radial-gradient(circle at top, #07090f, #02030a);
+    color: #e5e7eb;
+
+    min-height: 100vh;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.app {
+    display: flex;
+    gap: 40px;
+    padding: 34px 44px;
+
+    background: linear-gradient(180deg, #181c27, #11141d);
+
+    border-radius: 22px;
+
+    box-shadow:
+        0 40px 120px rgba(0,0,0,0.8),
+        inset 0 0 0 1px rgba(255,255,255,0.04);
+}
+
+/* ---------------- TABLE ---------------- */
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+th, td {
+    padding: 6px;
+    border-bottom: 1px solid #2a2f3a;
+}
+
+input {
+    width: 100%;
+    background: #0f1219;
+    color: white;
+    border: 1px solid #2a2f3a;
+    border-radius: 6px;
+    padding: 4px;
+}
+
+.toolbar {
+    display: flex;
+    gap: 6px;
+}
+
+#tagFilters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.tagToggle {
+    background: #2a2f3a;
+    padding: 4px 8px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.tagToggle.active {
+    background: #6366f1;
+}
+
+/* ---------- Controls ---------- */
+
+.controls {
+    width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.controls h1 {
+    margin: 0 0 8px;
+    font-size: 28px;
+}
+
+textarea {
+    background: #0f1219;
+    color: #fff;
+    border: 1px solid #2a2f3a;
+    border-radius: 10px;
+    padding: 12px;
+    height: 240px;
+    resize: vertical;
+    outline: none;
+}
+
+textarea:focus {
+    border-color: #6366f1;
+}
+
+button {
+    background: #2a2f3a;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: 0.15s;
+}
+
+button:hover {
+    background: #3b4253;
+}
+
+button.primary {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+}
+
+button.primary:hover {
+    filter: brightness(1.1);
+}
+
+/* ---------- Wheel ---------- */
+
+.wheel-wrapper {
+    position: relative;
+
+    /* Match canvas size exactly */
+    width: 650px;
+    height: 650px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+canvas {
+    display: block;
+}
+
+.pointer {
+    position: absolute;
+
+    /* vertically centered on wheel */
+    top: 50%;
+    transform: translateY(-50%) rotate(180deg);
+
+    /* slightly overlapping the rim */
+    right: -18px;
+
+    width: 0;
+    height: 0;
+
+    /* triangle pointing left */
+    border-top: 22px solid transparent;
+    border-bottom: 22px solid transparent;
+    border-left: 42px solid #ef4444;
+
+    filter: drop-shadow(0 3px 6px rgba(0,0,0,0.7));
+    z-index: 10;
+}
+
+/* ---------- MODAL ---------- */
+
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.75);
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    backdrop-filter: blur(4px);
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modalBox {
+    background: linear-gradient(180deg,#1c2030,#11141e);
+    padding: 36px 50px;
+    border-radius: 20px;
+    text-align: center;
+
+    box-shadow: 0 40px 120px rgba(0,0,0,.8);
+    animation: pop .35s ease;
+}
+
+@keyframes pop {
+    from { transform: scale(.7); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+#winnerText {
+    font-size: 40px;
+    font-weight: 700;
+    margin: 20px 0;
+    color: #a78bfa;
+}
