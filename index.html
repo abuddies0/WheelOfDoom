@@ -1,106 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Wheel of Doom</title>
-<link rel="stylesheet" href="style/main.css">
+    <meta charset="UTF-8">
+    <title>Wheel of Doom</title>
+    <link rel="stylesheet" href="style/main.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
 </head>
 <body>
-
-<div class="app">
-
-    <!-- ENTRY TABLE -->
-    <aside class="controls">
-
-        <h1>Wheel of Doom</h1>
-
-        <div class="toolbar">
-            <button id="addRowBtn">+ Add</button>
-
-            <button id="saveBoardBtn">Save</button>
-            <button id="loadBoardBtn">Load</button>
-
-            <button id="exportBtn">Export</button>
-            <button id="importBtn">Import</button>
-
-            <button id="copyBtn">Copy JSON</button>
-
+    <h1 class="app-name">Wheel of Doom</h1>
+    <div class="app">
+        <div id="generalToolbar">
+            <button id="saveBoardBtn" class="toolBtn">
+                <span class="material-icons-outlined">save</span>
+                Save
+            </button>
+            <button id="saveAsBoardBtn" class="toolBtn">
+                <span class="material-icons-outlined">save_as</span>
+                Save As
+            </button>
+            <button id="loadBoardBtn" class="toolBtn">
+                <span class="material-icons-outlined">file_open</span>
+                Load
+            </button>
+            <button id="exportBtn" class="toolBtn">
+                <span class="material-icons-outlined">download</span>
+                Export
+            </button>
+            <button id="importBtn" class="toolBtn">
+                <span class="material-icons-outlined">upload</span>
+                Import
+            </button>
+            <button id="copyBtn" class="toolBtn">
+                <span class="material-icons-outlined">content_copy</span>
+                Copy JSON
+            </button>
             <input type="file" id="importFile" hidden>
         </div>
 
-        <table id="entryTable">
-            <thead>
-                <tr>
-                    <th>Tags</th>
-                    <th>Weight</th>
-                    <th>Entry</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
+        <!-- ENTRY TABLE -->
+        <aside class="entries">
+            <div class="entries-container">
+                <table id="entryTable">
+                <thead>
+                    <tr>
+                        <th>Tags</th>
+                        <th>Weight</th>
+                        <th>Entry</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            </div>
+            <div class="tags-container">
+                <div id="tagFilters"></div>
+            </div>
+            <button id="spinBtn" class="primary">Spin</button>
+        </aside>
 
-        <div id="tagFilters"></div>
+        <!-- WHEEL -->
+        <main class="wheel-wrapper">
+            <button id="settingsBtn" class="settings-btn">⚙</button>
+            <div class="pointer"></div>
+            <canvas id="wheelCanvas" width="650" height="650"></canvas>
+        </main>
 
-        <button id="spinBtn" class="primary">Spin</button>
-
-    </aside>
-
-    <!-- WHEEL -->
-    <main class="wheel-wrapper">
-        <button id="settingsBtn" class="settings-btn">⚙</button>
-        <div class="pointer"></div>
-        <canvas id="wheelCanvas" width="650" height="650"></canvas>
-    </main>
-
-</div>
-
-<!-- MODALS -->
-
-<div id="winnerModal" class="modal hidden">
-    <div class="modalBox">
-        <h2>🎉 Winner!</h2>
-        <div id="winnerText"></div>
-        <button id="closeModalBtn">Close</button>
-    </div>
-</div>
-
-<div id="settingsModal" class="modal hidden">
-    <h2>⚙ Wheel Settings</h2>
-
-    <!-- COLOR SCHEME -->
-    <label>
-        Wheel Color Scheme
-        <select id="colorSchemeSelect">
-            <option value="classic">Classic</option>
-            <option value="cool">Cool Blue</option>
-            <option value="dark">Dark Mode</option>
-            <option value="warm">Warm</option>
-        </select>
-    </label>
-
-    <!-- SPIN STRENGTH -->
-    <div class="rangeGroup">
-        <small>Spin Strength</small>
-        <span>0.5</span>
-        <input id="spinStrengthSlider" type="range" min="0.5" max="40" step="0.5">
-        <span>40</span>
-        <input id="spinStrengthNumber" type="number">
     </div>
 
-    <div class="rangeGroup">
-        <small>Spin Duration (seconds)</small>
-        <span>0.1</span>
-        <input id="spinDurationSlider" type="range" min="0.1" max="60" step="1">
-        <span>60</span>
-        <input id="spinDurationNumber" type="number">
+    <!-- MODALS -->
+
+    <div id="winnerModal" class="modal hidden">
+        <div class="modalBox">
+            <h2>🎉 Winner!</h2>
+            <div id="winnerText"></div>
+            <button id="closeModalBtn">Close</button>
+        </div>
     </div>
 
-    <div class="settingsActions">
-        <button id="closeSettingsBtn" class="primary">Done</button>
-    </div>
-</div>
+    <div id="settingsModal" class="modal hidden">
+        <h2>⚙ Wheel Settings</h2>
 
-<script src="script/main.js"></script>
+        <!-- COLOR SCHEME -->
+        <label>
+            Wheel Color Scheme
+            <select id="colorSchemeSelect">
+                <option value="classic">Classic</option>
+                <option value="cool">Cool Blue</option>
+                <option value="dark">Dark Mode</option>
+                <option value="warm">Warm</option>
+            </select>
+        </label>
+
+        <!-- SPIN STRENGTH -->
+        <div class="rangeGroup">
+            <small>Spin Strength</small>
+            <span>0.5</span>
+            <input id="spinStrengthSlider" type="range" min="0.5" max="40" step="0.5">
+            <span>40</span>
+            <input id="spinStrengthNumber" type="number">
+        </div>
+
+        <div class="rangeGroup">
+            <small>Spin Duration (seconds)</small>
+            <span>0.1</span>
+            <input id="spinDurationSlider" type="range" min="0.1" max="60" step="1">
+            <span>60</span>
+            <input id="spinDurationNumber" type="number">
+        </div>
+
+        <div class="settingsActions">
+            <button id="closeSettingsBtn" class="primary">Done</button>
+        </div>
+    </div>
+
+    <script src="script/main.js"></script>
 </body>
 </html>

@@ -5,6 +5,7 @@ const tableBody = document.querySelector("#entryTable tbody");
 const tagFiltersDiv = document.getElementById("tagFilters");
 
 const saveBoardBtn = document.getElementById("saveBoardBtn");
+const saveAsBoardBtn = document.getElementById("saveAsBoardBtn");
 const loadBoardBtn = document.getElementById("loadBoardBtn");
 const copyBtn = document.getElementById("copyBtn");
 
@@ -30,51 +31,55 @@ let settings = {
     colorScheme: "classic"
 };
 
+let currentBoard = null;
+
 let radius = canvas.width / 2;
 
 let angle = 0;
 let spinning = false;
 
-let rows = [];
+let entries = [];
 let enabledTags = new Set();
 
 
 /* ---------------- Persistence ---------------- */
 
 function saveState() {
-    localStorage.setItem("wheelState", JSON.stringify(rows));
+    localStorage.setItem("wheelState", JSON.stringify(entries));
 }
 
 function loadState() {
     const saved = localStorage.getItem("wheelState");
-    if (saved) rows = JSON.parse(saved);
+    if (saved) entries = JSON.parse(saved);
 }
 
 /* ---------------- Rows ---------------- */
 
-function addRow(data = { tags: "", weight: 1, text: "" }) {
-    rows.push(data);
+function addEntry(data = { tags: "", weight: 1, text: "" }) {
+    entries.push(data);
     rebuildTable();
+    // Returns the newest entry (the last one)
+    return tableBody.lastChild;
 }
 
 function rebuildTable() {
     tableBody.innerHTML = "";
 
-    rows.forEach((row, i) => {
+    entries.forEach((entry, i) => {
         const tr = document.createElement("tr");
 
         tr.innerHTML = `
-            <td><input value="${row.tags}"></td>
-            <td><input type="number" min="1" value="${row.weight}"></td>
-            <td><input value="${row.text}"></td>
+            <td><input value="${entry.tags}"></td>
+            <td><input type="number" min="1" value="${entry.weight}"></td>
+            <td><input value="${entry.text}"></td>
             <td><button data-i="${i}">✕</button></td>
         `;
 
         tr.querySelectorAll("input").forEach(inp => {
             inp.oninput = () => {
-                row.tags = tr.children[0].firstChild.value;
-                row.weight = +tr.children[1].firstChild.value || 1;
-                row.text = tr.children[2].firstChild.value;
+                entry.tags = tr.children[0].firstChild.value;
+                entry.weight = +tr.children[1].firstChild.value || 1;
+                entry.text = tr.children[2].firstChild.value;
 
                 updateTagFilters();
                 saveState();
@@ -83,7 +88,7 @@ function rebuildTable() {
         });
 
         tr.querySelector("button").onclick = () => {
-            rows.splice(i, 1);
+            entries.splice(i, 1);
             rebuildTable();
         };
 
@@ -92,7 +97,8 @@ function rebuildTable() {
         entryInput.addEventListener("keydown", e => {
             if (e.key === "Enter") {
                 e.preventDefault();
-                addRow();
+                const newEntry = addEntry();
+                newEntry.childNodes[5].firstChild.focus();
             }
         });
 
@@ -109,7 +115,7 @@ function rebuildTable() {
 function updateTagFilters() {
     const allTags = new Set();
 
-    rows.forEach(r =>
+    entries.forEach(r =>
         r.tags.split(",").map(t => t.trim()).filter(Boolean)
             .forEach(t => allTags.add(t))
     );
@@ -140,16 +146,16 @@ function updateTagFilters() {
 function getActiveEntries() {
     const expanded = [];
 
-    rows.forEach(row => {
-        const tags = row.tags.split(",").map(t => t.trim());
+    entries.forEach(entry => {
+        const tags = entry.tags.split(",").map(t => t.trim());
 
         if (
             tags.length &&
             !tags.some(t => enabledTags.has(t))
         ) return;
 
-        for (let i = 0; i < row.weight; i++) {
-            expanded.push(row.text);
+        for (let i = 0; i < entry.weight; i++) {
+            expanded.push(entry.text);
         }
     });
 
@@ -286,7 +292,7 @@ spinBtn.onclick = spin;
 
 exportBtn.onclick = () => {
     const blob = new Blob(
-        [JSON.stringify(rows, null, 2)],
+        [JSON.stringify(entries, null, 2)],
         { type: "application/json" }
     );
 
@@ -307,7 +313,7 @@ importFile.onchange = e => {
     const reader = new FileReader();
 
     reader.onload = () => {
-        rows = JSON.parse(reader.result);
+        entries = JSON.parse(reader.result);
         rebuildTable();
     };
 
@@ -315,18 +321,33 @@ importFile.onchange = e => {
 };
 
 copyBtn.onclick = () => {
-    navigator.clipboard.writeText(JSON.stringify(rows));
+    navigator.clipboard.writeText(JSON.stringify(entries));
     alert("Copied JSON 👍");
 };
 
-saveBoardBtn.onclick = () => {
+function saveAs() {
     const name = prompt("Save board as:");
     if (!name) return;
 
     const boards = getBoards();
-    boards[name] = rows;
+    boards[name] = entries;
+
+    currentBoard = name;
 
     setBoards(boards);
+}
+
+saveBoardBtn.onclick = () => {
+    if (currentBoard == null) saveAs();
+
+    const boards = getBoards();
+    boards[currentBoard] = entries;
+
+    setBoards(boards);
+};
+
+saveAsBoardBtn.onclick = () => {
+    saveAs();
 };
 
 loadBoardBtn.onclick = () => {
@@ -341,7 +362,9 @@ loadBoardBtn.onclick = () => {
 
     if (!pick || !boards[pick]) return;
 
-    rows = boards[pick];
+    entries = boards[pick];
+
+    currentBoard = pick;
     rebuildTable();
 };
 
@@ -404,7 +427,7 @@ function setBoards(b) {
 
 loadState();
 
-if (!rows.length) {
-    addRow({ tags: "fruit", weight: 1, text: "Apple" });
-    addRow({ tags: "fruit", weight: 1, text: "Banana" });
+if (!entries.length) {
+    addEntry({ tags: "fruit", weight: 1, text: "Apple" });
+    addEntry({ tags: "fruit", weight: 1, text: "Banana" });
 } else rebuildTable();
