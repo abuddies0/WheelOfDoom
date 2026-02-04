@@ -14,13 +14,30 @@ const modal = document.getElementById("winnerModal");
 const winnerText = document.getElementById("winnerText");
 const closeModalBtn = document.getElementById("closeModalBtn");
 
-const radius = canvas.width / 2;
+const settingsBtn = document.getElementById("settingsBtn");
+const settingsModal = document.getElementById("settingsModal");
+const closeSettingsBtn = document.getElementById("closeSettingsBtn");
+
+// Wheel Settings
+const spinStrengthSlider = document.getElementById("spinStrengthSlider");
+const spinStrengthNumber = document.getElementById("spinStrengthNumber");
+const spinDurationSlider = document.getElementById("spinDurationSlider");
+const spinDurationNumber = document.getElementById("spinDurationNumber");
+const colorSchemeSelect = document.getElementById("colorSchemeSelect");
+let settings = {
+    spinStrength: 12,
+    spinDuration: 3.5, // seconds
+    colorScheme: "classic"
+};
+
+let radius = canvas.width / 2;
 
 let angle = 0;
 let spinning = false;
 
 let rows = [];
 let enabledTags = new Set();
+
 
 /* ---------------- Persistence ---------------- */
 
@@ -145,6 +162,16 @@ function drawWheel() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
     const entries = getActiveEntries();
+
+    const palettes = {
+        classic: i => `hsl(${i * 360 / entries.length},70%,55%)`,
+        cool: i => `hsl(${200 + i * 40 / entries.length},70%,55%)`,
+        dark: i => `hsl(220,15%,${35 + i * 15 / entries.length}%)`,
+        warm: i => `hsl(${20 + i * 40 / entries.length},75%,55%)`
+    };
+
+    const colorFn = palettes[settings.colorScheme] || palettes.classic;
+
     if (!entries.length) return;
 
     const slice = Math.PI * 2 / entries.length;
@@ -159,7 +186,7 @@ function drawWheel() {
         ctx.beginPath();
         ctx.moveTo(0,0);
         ctx.arc(0,0,radius,start,start+slice);
-        ctx.fillStyle = `hsl(${i*360/entries.length},70%,55%)`;
+        ctx.fillStyle = colorFn(i);
         ctx.fill();
 
         ctx.save();
@@ -192,8 +219,11 @@ function spin() {
     spinning = true;
 
     const start = angle;
-    const total = Math.random()*Math.PI*4 + Math.PI*10;
-    const duration = 3500;
+    const total =
+        Math.random() * Math.PI * settings.spinStrength +
+        Math.PI * settings.spinStrength;
+
+    const duration = settings.spinDuration * 1000;
 
     let startTime;
 
@@ -231,6 +261,22 @@ function showWinner() {
 
 closeModalBtn.onclick = () => {
     modal.classList.add("hidden");
+};
+
+settingsBtn.onclick = () => {
+    settingsModal.classList.remove("hidden");
+
+    spinStrengthSlider.value = settings.spinStrength;
+    spinStrengthNumber.value = settings.spinStrength;
+
+    spinDurationSlider.value = settings.spinDuration;
+    spinDurationNumber.value = settings.spinDuration;
+
+    colorSchemeSelect.value = settings.colorScheme;
+};
+
+closeSettingsBtn.onclick = () => {
+    settingsModal.classList.add("hidden");
 };
 
 canvas.onclick = spin;
@@ -297,6 +343,52 @@ loadBoardBtn.onclick = () => {
 
     rows = boards[pick];
     rebuildTable();
+};
+
+/* --------------- Settings -------------- */
+function applyWheelSize(size) {
+    canvas.width = size;
+    canvas.height = size;
+
+    document.querySelector(".wheel-wrapper").style.width = size + "px";
+    document.querySelector(".wheel-wrapper").style.height = size + "px";
+
+    radius = size / 2;
+
+    drawWheel();
+}
+
+function syncSpinStrength(val) {
+    settings.spinStrength = +val;
+    spinStrengthSlider.value = val;
+    spinStrengthNumber.value = val;
+}
+
+spinStrengthSlider.oninput = e =>
+    syncSpinStrength(e.target.value);
+
+spinStrengthNumber.oninput = e =>
+    syncSpinStrength(e.target.value);
+
+
+
+function syncSpinDuration(val) {
+    settings.spinDuration = +val;
+    spinDurationSlider.value = val;
+    spinDurationNumber.value = val;
+}
+
+spinDurationSlider.oninput = e =>
+    syncSpinDuration(e.target.value);
+
+spinDurationNumber.oninput = e =>
+    syncSpinDuration(e.target.value);
+
+
+
+colorSchemeSelect.onchange = e => {
+    settings.colorScheme = e.target.value;
+    drawWheel();
 };
 
 /* ------------ Local Cache ------------- */

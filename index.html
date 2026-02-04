@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Spinner Wheel</title>
+<title>Wheel of Doom</title>
 <link rel="stylesheet" href="style/main.css">
 </head>
 <body>
@@ -48,17 +48,56 @@
 
     <!-- WHEEL -->
     <main class="wheel-wrapper">
+        <button id="settingsBtn" class="settings-btn">⚙</button>
         <div class="pointer"></div>
         <canvas id="wheelCanvas" width="650" height="650"></canvas>
     </main>
 
 </div>
 
+<!-- MODALS -->
+
 <div id="winnerModal" class="modal hidden">
     <div class="modalBox">
         <h2>🎉 Winner!</h2>
         <div id="winnerText"></div>
         <button id="closeModalBtn">Close</button>
+    </div>
+</div>
+
+<div id="settingsModal" class="modal hidden">
+    <h2>⚙ Wheel Settings</h2>
+
+    <!-- COLOR SCHEME -->
+    <label>
+        Wheel Color Scheme
+        <select id="colorSchemeSelect">
+            <option value="classic">Classic</option>
+            <option value="cool">Cool Blue</option>
+            <option value="dark">Dark Mode</option>
+            <option value="warm">Warm</option>
+        </select>
+    </label>
+
+    <!-- SPIN STRENGTH -->
+    <div class="rangeGroup">
+        <small>Spin Strength</small>
+        <span>0.5</span>
+        <input id="spinStrengthSlider" type="range" min="0.5" max="40" step="0.5">
+        <span>40</span>
+        <input id="spinStrengthNumber" type="number">
+    </div>
+
+    <div class="rangeGroup">
+        <small>Spin Duration (seconds)</small>
+        <span>0.1</span>
+        <input id="spinDurationSlider" type="range" min="0.1" max="60" step="1">
+        <span>60</span>
+        <input id="spinDurationNumber" type="number">
+    </div>
+
+    <div class="settingsActions">
+        <button id="closeSettingsBtn" class="primary">Done</button>
     </div>
 </div>
 
