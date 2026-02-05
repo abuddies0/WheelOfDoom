@@ -838,8 +838,8 @@ document.addEventListener("DOMContentLoaded", () => {
     loadState();
 
     if (!wheelEntries.length) {
-        addEntry({ tags: "fruit", weight: 1, text: "Apple" });
-        addEntry({ tags: "fruit", weight: 1, text: "Banana" });
+        addWheelEntry({ tags: "fruit", weight: 1, text: "Apple" });
+        addWheelEntry({ tags: "fruit", weight: 1, text: "Banana" });
     } else {
         rebuildTable();
     }
