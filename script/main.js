@@ -144,25 +144,26 @@ function updateTagFilters() {
 /* ---------------- Active Entries ---------------- */
 
 function getActiveEntries() {
-    const expanded = [];
-
-    entries.forEach(entry => {
-        const tags = entry.tags.split(",").map(t => t.trim());
-
-        if (
-            tags.length &&
-            !tags.some(t => enabledTags.has(t))
-        ) return;
-
-        for (let i = 0; i < entry.weight; i++) {
-            expanded.push(entry.text);
-        }
-    });
-
-    return expanded;
+    // Return entries as {text, weight} objects, filtered by enabled tags
+    return entries
+        .filter(entry => {
+            const tags = entry.tags.split(",").map(t => t.trim());
+            return !tags.length || tags.some(t => enabledTags.has(t) || t=="");
+        })
+        .map(entry => ({ text: entry.text, weight: +entry.weight || 1 }));
 }
-
 /* ---------------- Drawing ---------------- */
+
+function getTotalWeight() {
+    const entries = getActiveEntries();
+
+    let totalWeight = 0;
+    for (const entry of entries) {
+        totalWeight += entry["weight"];
+    }
+
+    return totalWeight;
+}
 
 function drawWheel() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -180,23 +181,29 @@ function drawWheel() {
 
     if (!entries.length) return;
 
-    const slice = Math.PI * 2 / entries.length;
+    const totalWeight = getTotalWeight();
+
+    const slicePerWeight = Math.PI * 2 / totalWeight;
 
     ctx.save();
     ctx.translate(radius, radius);
     ctx.rotate(angle);
 
-    entries.forEach((text, i) => {
-        const start = i * slice;
+    let start = Math.PI * 2;
+
+    entries.forEach((entry, i) => {
+
+        const weight = entry["weight"];
+        const text = entry["text"]
 
         ctx.beginPath();
         ctx.moveTo(0,0);
-        ctx.arc(0,0,radius,start,start+slice);
+        ctx.arc(0,0,radius,start-slicePerWeight*weight,start);
         ctx.fillStyle = colorFn(i);
         ctx.fill();
 
         ctx.save();
-        ctx.rotate(start + slice/2);
+        ctx.rotate(start - (slicePerWeight*weight)/2);
 
         let size = 22;
         ctx.font = `${size}px system-ui`;
@@ -212,6 +219,8 @@ function drawWheel() {
         ctx.fillText(text,0,0);
 
         ctx.restore();
+
+        start -= slicePerWeight*weight;
     });
 
     ctx.restore();
@@ -224,12 +233,24 @@ function spin() {
 
     spinning = true;
 
-    const start = angle;
-    const total =
-        Math.random() * Math.PI * settings.spinStrength +
-        Math.PI * settings.spinStrength;
+    // Decide the winner (to make sure it's fully random each time)
+    const winner = pullWeightedEntry();
+
+    const slicePerWeight = Math.PI * 2 / getTotalWeight();
+    const currentWeightPos = (angle % (2*Math.PI)) / slicePerWeight;
+    
+    // console.log(currentWeightPos);
+    // console.log(winner);
+
+    const start = angle % (2 * Math.PI);
+    let total =
+        (winner["weight"] * slicePerWeight) - start +
+        2*Math.PI * Math.floor(settings.spinStrength);
+    if (total < 0) { total += 2*Math.PI; }
 
     const duration = settings.spinDuration * 1000;
+
+    // console.log(total);
 
     let startTime;
 
@@ -244,24 +265,45 @@ function spin() {
         if (p < 1) requestAnimationFrame(frame);
         else {
             spinning = false;
-            showWinner();
+            showWinner(winner["entry"]);
         }
     }
 
     requestAnimationFrame(frame);
 }
 
-function showWinner() {
+function getPointerEntry() {
     const entries = getActiveEntries();
-    const slice = Math.PI * 2 / entries.length;
+    const slicePerWeight = Math.PI * 2 / getTotalWeight();
+    let currentWeightPos = (angle % (2*Math.PI)) / slicePerWeight;
+    console.log(currentWeightPos);
+    for (const entry of entries) {
+        currentWeightPos -= entry["weight"];
+        if (currentWeightPos <= 0) {
+            console.log(entry);
+            return;
+        }
+    }
+}
 
-    const normalized =
-        (2 * Math.PI - (angle % (2 * Math.PI))) %
-        (2 * Math.PI);
+function pullWeightedEntry() {
+    const entries = getActiveEntries();
 
-    const index = Math.floor(normalized / slice);
+    const totalWeight = getTotalWeight();
 
-    winnerText.textContent = entries[index];
+    const winningWeight = totalWeight * Math.random();
+    let tempWeight = winningWeight;
+
+    for (const entry of entries) {
+        tempWeight -= entry["weight"];
+        if (tempWeight <= 0) {
+            return {weight: winningWeight, entry: entry};
+        }
+    }
+}
+
+function showWinner(winningEntry) {
+    winnerText.textContent = winningEntry["text"];
     modal.classList.remove("hidden");
 }
 
