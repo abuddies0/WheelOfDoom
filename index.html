@@ -80,7 +80,6 @@
     <div id="settingsModal" class="modal hidden">
         <h2>⚙ Wheel Settings</h2>
 
-        <!-- COLOR SCHEME -->
         <label>
             Wheel Color Scheme
             <select id="colorSchemeSelect">
@@ -91,7 +90,6 @@
             </select>
         </label>
 
-        <!-- SPIN STRENGTH -->
         <div class="rangeGroup">
             <small>Spin Strength</small>
             <span>0.5</span>
@@ -112,6 +110,30 @@
             <button id="closeSettingsBtn" class="primary">Done</button>
         </div>
     </div>
+
+    <div id="saveModal" class="modal hidden">
+        <div class="modalCard">
+            <h2>Save Wheel</h2>
+            <label class="modalLabel">Board Name</label>
+            <input id="saveNameInput" class="modalInput" placeholder="My Awesome Wheel">
+            <div class="modalActions">
+                <button id="cancelSaveAsBtn" class="secondaryBtn">Cancel</button>
+                <button id="confirmSaveAsBtn" class="primaryBtn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadModal" class="modal hidden">
+        <div class="modalCard">
+            <h2>Load Wheel</h2>
+            <div id="loadList" class="boardList"></div>
+            <div class="modalActions">
+                <button id="closeLoadBtn" class="secondaryBtn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="cardContainer"></div>
 
     <script src="script/main.js"></script>
 </body>

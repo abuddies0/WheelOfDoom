@@ -4,13 +4,16 @@ const ctx = canvas.getContext("2d");
 const tableBody = document.querySelector("#wheelEntryTable tbody");
 const tagFiltersDiv = document.getElementById("tagFilters");
 
+// General toolbar buttons
 const saveBoardBtn = document.getElementById("saveBoardBtn");
 const saveAsBoardBtn = document.getElementById("saveAsBoardBtn");
 const loadBoardBtn = document.getElementById("loadBoardBtn");
 const copyBtn = document.getElementById("copyBtn");
-
 const importFile = document.getElementById("importFile");
 
+const spinBtn = document.getElementById("spinBtn");
+
+// Modals
 const modal = document.getElementById("winnerModal");
 const winnerText = document.getElementById("winnerText");
 const closeModalBtn = document.getElementById("closeModalBtn");
@@ -18,6 +21,21 @@ const closeModalBtn = document.getElementById("closeModalBtn");
 const settingsBtn = document.getElementById("settingsBtn");
 const settingsModal = document.getElementById("settingsModal");
 const closeSettingsBtn = document.getElementById("closeSettingsBtn");
+
+const confirmSaveAsBtn = document.getElementById("confirmSaveAsBtn");
+const cancelSaveAsBtn = document.getElementById("cancelSaveAsBtn");
+
+const savedBoardsList = document.getElementById("savedBoardsList");
+const closeLoadBtn = document.getElementById("closeLoadBtn");
+
+const saveModal = document.getElementById("saveModal");
+const loadModal = document.getElementById("loadModal");
+
+const saveNameInput = document.getElementById("saveNameInput");
+const loadList = document.getElementById("loadList");
+
+cancelSaveAsBtn.onclick = () => saveModal.classList.add("hidden");
+closeLoadBtn.onclick = () => loadModal.classList.add("hidden");
 
 // Wheel Settings
 const spinStrengthSlider = document.getElementById("spinStrengthSlider");
@@ -436,22 +454,38 @@ copyBtn.onclick = () => {
 };
 
 function saveAs() {
-    const name = prompt("Save board as:");
+    saveNameInput.value = currentBoard || "";
+    saveModal.classList.remove("hidden");
+    saveNameInput.focus();
+}
+
+confirmSaveAsBtn.onclick = () => {
+    const name = saveNameInput.value.trim();
     if (!name) return;
 
     const boards = getBoards();
+
     boards[name] = getBoardData();
 
     currentBoard = name;
-
     setBoards(boards);
-}
+
+    saveModal.classList.add("hidden");
+    showCard("Saved Successfully!", 4);
+};
+
+cancelSaveAsBtn.onclick = () => saveModal.classList.add("hidden");
 
 saveBoardBtn.onclick = () => {
-    if (currentBoard == null) saveAs();
+    if (currentBoard == null) {
+        saveAs();
+        return;
+    }
 
     const boards = getBoards();
     boards[currentBoard] = getBoardData();
+
+    showCard("Saved!", 2)
 
     setBoards(boards);
 };
@@ -461,22 +495,67 @@ saveAsBoardBtn.onclick = () => {
 };
 
 loadBoardBtn.onclick = () => {
-    const boards = getBoards();
-    const names = Object.keys(boards);
-
-    if (!names.length) return alert("No saved boards!");
-
-    const pick = prompt(
-        "Available:\n" + names.join("\n")
-    );
-
-    if (!pick || !boards[pick]) return;
-
-    loadBoardData(boards[pick]);
-
-    currentBoard = pick;
-    rebuildTable();
+    loadModal.classList.remove("hidden");
+    rebuildLoadMenu();
 };
+
+function rebuildLoadMenu() {
+    loadList.innerHTML = "";
+
+    const boards = getBoards();
+
+    Object.keys(boards).forEach(name => {
+
+        const row = document.createElement("div");
+        row.className = "boardRow";
+
+        const title = document.createElement("div");
+        title.className = "boardName";
+        title.textContent = name;
+
+        const btns = document.createElement("div");
+        btns.className = "boardBtns";
+
+        const loadBtn = document.createElement("button");
+        loadBtn.className = "primaryBtn";
+        loadBtn.textContent = "Load";
+        loadBtn.onclick = () => {
+            loadBoard(name);
+            loadModal.classList.add("hidden");
+            showCard("Board Loaded", 3);
+        };
+
+        const delBtn = document.createElement("button");
+        delBtn.className = "deleteBtn";
+        delBtn.textContent = "Delete";
+        delBtn.onclick = () => {
+            if (!confirm(`Delete "${name}"?`)) return;
+
+            const boards = getBoards();
+            delete boards[name];
+            setBoards(boards);
+
+            rebuildLoadMenu();
+            showCard("Deleted", 3);
+        };
+
+        btns.append(loadBtn, delBtn);
+        row.append(title, btns);
+        loadList.append(row);
+    });
+}
+
+function loadBoard(name) {
+    const boards = getBoards();
+    if (!boards[name]) {
+        showCard(`Board "${name}" not found!`, 3);
+        return;
+    }
+
+    currentBoard = name;
+    loadBoardData(boards[name]);
+    showCard(`Board "${name}" loaded!`, 3);
+}
 
 /* --------------- Settings -------------- */
 function applyWheelSize(size) {
@@ -550,6 +629,30 @@ function getBoards() {
 
 function setBoards(b) {
     localStorage.setItem("savedBoards", JSON.stringify(b));
+}
+
+/* ------------- Utilities ------------- */
+const cardContainer = document.getElementById("cardContainer");
+
+function showCard(msg, seconds = 3) {
+    const card = document.createElement("div");
+    card.className = "toastCard";
+    card.textContent = msg;
+
+    const bar = document.createElement("div");
+    bar.className = "toastBar";
+
+    card.appendChild(bar);
+    cardContainer.appendChild(card);
+
+    bar.animate(
+        [{ width: "100%" }, { width: "0%" }],
+        { duration: seconds * 1000, easing: "linear" }
+    );
+
+    setTimeout(() => {
+        card.remove();
+    }, seconds * 1000);
 }
 
 /* ---------------- Init ---------------- */
