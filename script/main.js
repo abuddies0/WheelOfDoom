@@ -1,7 +1,7 @@
 const canvas = document.getElementById("wheelCanvas");
 const ctx = canvas.getContext("2d");
 
-const tableBody = document.querySelector("#entryTable tbody");
+const tableBody = document.querySelector("#wheelEntryTable tbody");
 const tagFiltersDiv = document.getElementById("tagFilters");
 
 const saveBoardBtn = document.getElementById("saveBoardBtn");
@@ -38,48 +38,54 @@ let radius = canvas.width / 2;
 let angle = 0;
 let spinning = false;
 
-let entries = [];
+let wheelEntries = [];
 let enabledTags = new Set();
+let knownTags = new Set();
 
 
 /* ---------------- Persistence ---------------- */
 
 function saveState() {
-    localStorage.setItem("wheelState", JSON.stringify(entries));
+    localStorage.setItem(
+        "wheelState",
+        JSON.stringify(getBoardData())
+    );
 }
 
 function loadState() {
     const saved = localStorage.getItem("wheelState");
-    if (saved) entries = JSON.parse(saved);
+    if (saved) {
+        loadBoardData(JSON.parse(saved));
+    }
 }
 
 /* ---------------- Rows ---------------- */
 
-function addEntry(data = { tags: "", weight: 1, text: "" }) {
-    entries.push(data);
+function addWheelEntry(data = { tags: "", weight: 1, text: "" }) {
+    wheelEntries.push(data);
     rebuildTable();
-    // Returns the newest entry (the last one)
+    // Returns the newest wheelEntry (the last one)
     return tableBody.lastChild;
 }
 
 function rebuildTable() {
     tableBody.innerHTML = "";
 
-    entries.forEach((entry, i) => {
+    wheelEntries.forEach((wheelEntry, i) => {
         const tr = document.createElement("tr");
 
         tr.innerHTML = `
-            <td><input value="${entry.tags}"></td>
-            <td><input type="number" min="1" value="${entry.weight}"></td>
-            <td><input value="${entry.text}"></td>
+            <td><input value="${wheelEntry.tags}"></td>
+            <td><input type="number" min="1" value="${wheelEntry.weight}"></td>
+            <td><input value="${wheelEntry.text}"></td>
             <td><button data-i="${i}">✕</button></td>
         `;
 
         tr.querySelectorAll("input").forEach(inp => {
             inp.oninput = () => {
-                entry.tags = tr.children[0].firstChild.value;
-                entry.weight = +tr.children[1].firstChild.value || 1;
-                entry.text = tr.children[2].firstChild.value;
+                wheelEntry.tags = tr.children[0].firstChild.value;
+                wheelEntry.weight = +tr.children[1].firstChild.value || 1;
+                wheelEntry.text = tr.children[2].firstChild.value;
 
                 updateTagFilters();
                 saveState();
@@ -88,24 +94,62 @@ function rebuildTable() {
         });
 
         tr.querySelector("button").onclick = () => {
-            entries.splice(i, 1);
+            wheelEntries.splice(i, 1);
             rebuildTable();
         };
 
-        const entryInput = tr.children[2].firstChild;
+        const wheelEntryInput = tr.children[2].firstChild;
 
-        entryInput.addEventListener("keydown", e => {
+        wheelEntryInput.addEventListener("keydown", e => {
             if (e.key === "Enter") {
                 e.preventDefault();
-                const newEntry = addEntry();
-                newEntry.childNodes[5].firstChild.focus();
+                const newWheelEntry = addWheelEntry();
+                newWheelEntry.childNodes[5].firstChild.focus();
             }
+        });
+
+        // Multiline pasting
+        wheelEntryInput.addEventListener("paste", e => {
+            const text = e.clipboardData.getData("text");
+
+            // only special-handle multiline paste
+            if (!text.includes("\n")) return;
+
+            e.preventDefault();
+
+            const lines = text
+                .split(/\r?\n/)
+                .map(l => l.trim())
+                .filter(Boolean);
+
+            if (!lines.length) return;
+
+            // replace current row text
+            wheelEntry.text = lines[0];
+            wheelEntryInput.value = lines[0];
+
+            // insert remaining as new entries
+            const insertIndex = i + 1;
+
+            const newOnes = lines.slice(1).map(line => ({
+                tags: wheelEntry.tags,
+                weight: wheelEntry.weight,
+                text: line
+            }));
+
+            wheelEntries.splice(insertIndex, 0, ...newOnes);
+
+            rebuildTable();
         });
 
         tableBody.appendChild(tr);
     });
 
-    updateTagFilters();
+    try {
+        if (wheelEntries != null) { updateTagFilters(); } 
+    } catch (e) {
+        console.log(e)
+    }
     saveState();
     drawWheel();
 }
@@ -115,16 +159,40 @@ function rebuildTable() {
 function updateTagFilters() {
     const allTags = new Set();
 
-    entries.forEach(r =>
-        r.tags.split(",").map(t => t.trim()).filter(Boolean)
+    wheelEntries.forEach(r =>
+        r.tags.split(",")
+            .map(t => t.trim())
+            .filter(Boolean)
             .forEach(t => allTags.add(t))
     );
+
+    // remove tags that no longer exist
+    [...enabledTags].forEach(t => {
+        if (!allTags.has(t)) enabledTags.delete(t);
+    });
+
+    [...knownTags].forEach(t => {
+        if (!allTags.has(t)) knownTags.delete(t);
+    });
+
+    // enable only *new* tags
+    allTags.forEach(t => {
+        if (!knownTags.has(t)) {
+            enabledTags.add(t);
+            knownTags.add(t);
+        }
+    });
 
     tagFiltersDiv.innerHTML = "";
 
     allTags.forEach(tag => {
         const div = document.createElement("div");
-        div.className = "tagToggle active";
+        div.className = "tagToggle";
+
+        if (enabledTags.has(tag)) {
+            div.classList.add("active");
+        }
+
         div.textContent = tag;
 
         div.onclick = () => {
@@ -134,32 +202,32 @@ function updateTagFilters() {
             else enabledTags.add(tag);
 
             drawWheel();
+            saveState();
         };
 
-        enabledTags.add(tag);
         tagFiltersDiv.appendChild(div);
     });
 }
 
-/* ---------------- Active Entries ---------------- */
+/* ---------------- Active WheelEntrys ---------------- */
 
-function getActiveEntries() {
-    // Return entries as {text, weight} objects, filtered by enabled tags
-    return entries
-        .filter(entry => {
-            const tags = entry.tags.split(",").map(t => t.trim());
+function getActiveWheelEntrys() {
+    // Return wheelEntries as {text, weight} objects, filtered by enabled tags
+    return wheelEntries
+        .filter(wheelEntry => {
+            const tags = wheelEntry.tags.split(",").map(t => t.trim());
             return !tags.length || tags.some(t => enabledTags.has(t) || t=="");
         })
-        .map(entry => ({ text: entry.text, weight: +entry.weight || 1 }));
+        .map(wheelEntry => ({ text: wheelEntry.text, weight: +wheelEntry.weight || 1 }));
 }
 /* ---------------- Drawing ---------------- */
 
 function getTotalWeight() {
-    const entries = getActiveEntries();
+    const wheelEntries = getActiveWheelEntrys();
 
     let totalWeight = 0;
-    for (const entry of entries) {
-        totalWeight += entry["weight"];
+    for (const wheelEntry of wheelEntries) {
+        totalWeight += wheelEntry["weight"];
     }
 
     return totalWeight;
@@ -168,18 +236,18 @@ function getTotalWeight() {
 function drawWheel() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    const entries = getActiveEntries();
+    const wheelEntries = getActiveWheelEntrys();
 
     const palettes = {
-        classic: i => `hsl(${i * 360 / entries.length},70%,55%)`,
-        cool: i => `hsl(${200 + i * 40 / entries.length},70%,55%)`,
-        dark: i => `hsl(220,15%,${35 + i * 15 / entries.length}%)`,
-        warm: i => `hsl(${20 + i * 40 / entries.length},75%,55%)`
+        classic: i => `hsl(${i * 360 / wheelEntries.length},70%,55%)`,
+        cool: i => `hsl(${200 + i * 40 / wheelEntries.length},70%,55%)`,
+        dark: i => `hsl(220,15%,${35 + i * 15 / wheelEntries.length}%)`,
+        warm: i => `hsl(${20 + i * 40 / wheelEntries.length},75%,55%)`
     };
 
     const colorFn = palettes[settings.colorScheme] || palettes.classic;
 
-    if (!entries.length) return;
+    if (!wheelEntries.length) return;
 
     const totalWeight = getTotalWeight();
 
@@ -191,10 +259,10 @@ function drawWheel() {
 
     let start = Math.PI * 2;
 
-    entries.forEach((entry, i) => {
+    wheelEntries.forEach((wheelEntry, i) => {
 
-        const weight = entry["weight"];
-        const text = entry["text"]
+        const weight = wheelEntry["weight"];
+        const text = wheelEntry["text"]
 
         ctx.beginPath();
         ctx.moveTo(0,0);
@@ -234,7 +302,7 @@ function spin() {
     spinning = true;
 
     // Decide the winner (to make sure it's fully random each time)
-    const winner = pullWeightedEntry();
+    const winner = pullWeightedWheelEntry();
 
     const slicePerWeight = Math.PI * 2 / getTotalWeight();
     const currentWeightPos = (angle % (2*Math.PI)) / slicePerWeight;
@@ -265,45 +333,45 @@ function spin() {
         if (p < 1) requestAnimationFrame(frame);
         else {
             spinning = false;
-            showWinner(winner["entry"]);
+            showWinner(winner["wheelEntry"]);
         }
     }
 
     requestAnimationFrame(frame);
 }
 
-function getPointerEntry() {
-    const entries = getActiveEntries();
+function getPointerWheelEntry() {
+    const wheelEntries = getActiveWheelEntrys();
     const slicePerWeight = Math.PI * 2 / getTotalWeight();
     let currentWeightPos = (angle % (2*Math.PI)) / slicePerWeight;
     console.log(currentWeightPos);
-    for (const entry of entries) {
-        currentWeightPos -= entry["weight"];
+    for (const wheelEntry of wheelEntries) {
+        currentWeightPos -= wheelEntry["weight"];
         if (currentWeightPos <= 0) {
-            console.log(entry);
+            console.log(wheelEntry);
             return;
         }
     }
 }
 
-function pullWeightedEntry() {
-    const entries = getActiveEntries();
+function pullWeightedWheelEntry() {
+    const wheelEntries = getActiveWheelEntrys();
 
     const totalWeight = getTotalWeight();
 
     const winningWeight = totalWeight * Math.random();
     let tempWeight = winningWeight;
 
-    for (const entry of entries) {
-        tempWeight -= entry["weight"];
+    for (const wheelEntry of wheelEntries) {
+        tempWeight -= wheelEntry["weight"];
         if (tempWeight <= 0) {
-            return {weight: winningWeight, entry: entry};
+            return {weight: winningWeight, wheelEntry: wheelEntry};
         }
     }
 }
 
-function showWinner(winningEntry) {
-    winnerText.textContent = winningEntry["text"];
+function showWinner(winningWheelEntry) {
+    winnerText.textContent = winningWheelEntry["text"];
     modal.classList.remove("hidden");
 }
 
@@ -334,7 +402,7 @@ spinBtn.onclick = spin;
 
 exportBtn.onclick = () => {
     const blob = new Blob(
-        [JSON.stringify(entries, null, 2)],
+        [JSON.stringify(getBoardData(), null, 2)],
         { type: "application/json" }
     );
 
@@ -355,7 +423,7 @@ importFile.onchange = e => {
     const reader = new FileReader();
 
     reader.onload = () => {
-        entries = JSON.parse(reader.result);
+        wheelEntries = JSON.parse(reader.result);
         rebuildTable();
     };
 
@@ -363,7 +431,7 @@ importFile.onchange = e => {
 };
 
 copyBtn.onclick = () => {
-    navigator.clipboard.writeText(JSON.stringify(entries));
+    navigator.clipboard.writeText(JSON.stringify(wheelEntries));
     alert("Copied JSON 👍");
 };
 
@@ -372,7 +440,7 @@ function saveAs() {
     if (!name) return;
 
     const boards = getBoards();
-    boards[name] = entries;
+    boards[name] = getBoardData();
 
     currentBoard = name;
 
@@ -383,7 +451,7 @@ saveBoardBtn.onclick = () => {
     if (currentBoard == null) saveAs();
 
     const boards = getBoards();
-    boards[currentBoard] = entries;
+    boards[currentBoard] = getBoardData();
 
     setBoards(boards);
 };
@@ -404,7 +472,7 @@ loadBoardBtn.onclick = () => {
 
     if (!pick || !boards[pick]) return;
 
-    entries = boards[pick];
+    loadBoardData(boards[pick]);
 
     currentBoard = pick;
     rebuildTable();
@@ -457,6 +525,25 @@ colorSchemeSelect.onchange = e => {
 };
 
 /* ------------ Local Cache ------------- */
+function getBoardData() {
+    return {
+        wheelEntries,
+        enabledTags: [...enabledTags],
+        knownTags: [...knownTags],
+        settings
+    };
+}
+
+function loadBoardData(data) {
+    wheelEntries = data.wheelEntries || [{ tags: "fruit", weight: 1, text: "Apple" }];
+    enabledTags = new Set(data.enabledTags || []);
+    knownTags = new Set(data.knownTags || []);
+    settings = { ...settings, ...(data.settings || {}) };
+
+    rebuildTable();
+    drawWheel();
+}
+
 function getBoards() {
     return JSON.parse(localStorage.getItem("savedBoards") || "{}");
 }
@@ -467,9 +554,13 @@ function setBoards(b) {
 
 /* ---------------- Init ---------------- */
 
-loadState();
+document.addEventListener("DOMContentLoaded", () => {
+    loadState();
 
-if (!entries.length) {
-    addEntry({ tags: "fruit", weight: 1, text: "Apple" });
-    addEntry({ tags: "fruit", weight: 1, text: "Banana" });
-} else rebuildTable();
+    if (!wheelEntries.length) {
+        addEntry({ tags: "fruit", weight: 1, text: "Apple" });
+        addEntry({ tags: "fruit", weight: 1, text: "Banana" });
+    } else {
+        rebuildTable();
+    }
+});

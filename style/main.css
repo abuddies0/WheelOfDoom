@@ -114,7 +114,7 @@ input {
     padding: 4px;
 }
 
-.entriesToolbar {
+.wheelEntriesToolbar {
     display: flex;
     gap: 6px;
 }
@@ -161,19 +161,19 @@ input {
 
 /* ---------- Controls ---------- */
 
-.entries {
+.wheelEntries {
     width: 300px;
     display: flex;
     flex-direction: column;
     gap: 14px;
 }
 
-.entries h1 {
+.wheelEntries h1 {
     margin: 0 0 8px;
     font-size: 28px;
 }
 
-.entries-container {
+.wheelEntries-container {
     width: 100%; /* Fixed width of the container */
     height: 450px; /* Fixed height of the container */
     overflow: auto; /* Adds scroll bars if content overflows */
