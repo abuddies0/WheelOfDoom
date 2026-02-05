@@ -40,6 +40,17 @@
         <!-- ENTRY TABLE -->
         <aside class="wheelEntries">
             <div class="wheelEntries-container">
+                <div class="textModeToggle">
+                    <span>Text Mode</span>
+                    <label class="switch">
+                        <input type="checkbox" id="textModeSwitch">
+                        <span class="slider round"></span>
+                    </label>
+                    <button id="shuffleBtn" class="secondaryBtn">
+                        <span class="material-icons-outlined">cached</span>
+                    </button>
+                </div>
+                <textarea id="textModeArea" class="hidden"></textarea>
                 <table id="wheelEntryTable">
                 <thead>
                     <tr>

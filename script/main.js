@@ -1,8 +1,12 @@
 const canvas = document.getElementById("wheelCanvas");
 const ctx = canvas.getContext("2d");
 
+// Wheel Entries
 const tableBody = document.querySelector("#wheelEntryTable tbody");
 const tagFiltersDiv = document.getElementById("tagFilters");
+const textModeSwitch = document.getElementById("textModeSwitch");
+const textModeArea = document.getElementById("textModeArea");
+const shuffleBtn = document.getElementById("shuffleBtn");
 
 // General toolbar buttons
 const saveBoardBtn = document.getElementById("saveBoardBtn");
@@ -49,6 +53,8 @@ let settings = {
     colorScheme: "classic"
 };
 
+let textModeActive = false;
+
 let currentBoard = null;
 
 let radius = canvas.width / 2;
@@ -77,7 +83,7 @@ function loadState() {
     }
 }
 
-/* ---------------- Rows ---------------- */
+/* ---------------- Wheel Entries ---------------- */
 
 function addWheelEntry(data = { tags: "", weight: 1, text: "" }) {
     wheelEntries.push(data);
@@ -170,6 +176,105 @@ function rebuildTable() {
     }
     saveState();
     drawWheel();
+
+    makeTableDraggable();
+}
+
+// Helper: Convert wheelEntries -> textarea text
+function updateTextModeArea() {
+    const lines = wheelEntries.map(e =>
+        `${e.text} | ${e.weight} | ${e.tags}`
+    );
+    textModeArea.value = lines.join("\n");
+}
+
+// Helper: Convert textarea text -> wheelEntries
+function parseTextModeArea() {
+    const lines = textModeArea.value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const newEntries = lines.map(line => {
+        const parts = line.split("|").map(p => p.trim());
+        return {
+            text: parts[0] || "",
+            weight: +parts[1] || 1,
+            tags: parts[2] || ""
+        };
+    });
+    wheelEntries = newEntries;
+    rebuildTable();
+    updateTagFilters();
+    saveState();
+    drawWheel();
+}
+
+// Toggle Text Mode
+textModeSwitch.onchange = () => {
+    textModeActive = textModeSwitch.checked;
+
+    if (textModeActive) {
+        tableBody.parentElement.classList.add("hidden"); // hide table container
+        textModeArea.classList.remove("hidden");
+        updateTextModeArea();
+    } else {
+        tableBody.parentElement.classList.remove("hidden");
+        textModeArea.classList.add("hidden");
+        parseTextModeArea(); // sync back into table
+    }
+};
+
+// Autosave while typing
+textModeArea.addEventListener("input", () => {
+    parseTextModeArea();
+});
+
+
+shuffleBtn.onclick = () => {
+    for (let i = wheelEntries.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [wheelEntries[i], wheelEntries[j]] = [wheelEntries[j], wheelEntries[i]];
+    }
+    rebuildTable();
+    saveState();
+    showCard("Shuffled!", 1);
+};
+
+function makeTableDraggable() {
+    let draggedIndex = null;
+
+    tableBody.querySelectorAll("tr").forEach((tr, i) => {
+        tr.draggable = true;
+
+        tr.addEventListener("dragstart", e => {
+            draggedIndex = i;
+            tr.style.opacity = "0.5";
+        });
+
+        tr.addEventListener("dragend", e => {
+            draggedIndex = null;
+            tr.style.opacity = "1";
+        });
+
+        tr.addEventListener("dragover", e => {
+            e.preventDefault(); // allow drop
+            tr.style.borderTop = "2px solid #4CAF50";
+        });
+
+        tr.addEventListener("dragleave", e => {
+            tr.style.borderTop = "";
+        });
+
+        tr.addEventListener("drop", e => {
+            e.preventDefault();
+            tr.style.borderTop = "";
+
+            if (draggedIndex === null || draggedIndex === i) return;
+
+            const movedItem = wheelEntries.splice(draggedIndex, 1)[0];
+            wheelEntries.splice(i, 0, movedItem);
+
+            rebuildTable();
+            saveState();
+        });
+    });
 }
 
 /* ---------------- Tags ---------------- */
