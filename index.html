@@ -10,15 +10,19 @@
     <h1 class="app-name">Wheel of Doom</h1>
     <div class="app">
         <div id="generalToolbar">
-            <button id="saveBoardBtn" class="toolBtn">
+            <button id="newWheelBtn" class="toolBtn">
+                <span class="material-icons-outlined">add</span>
+                New
+            </button>
+            <button id="saveWheelBtn" class="toolBtn">
                 <span class="material-icons-outlined">save</span>
                 Save
             </button>
-            <button id="saveAsBoardBtn" class="toolBtn">
+            <button id="saveAsWheelBtn" class="toolBtn">
                 <span class="material-icons-outlined">save_as</span>
                 Save As
             </button>
-            <button id="loadBoardBtn" class="toolBtn">
+            <button id="loadWheelBtn" class="toolBtn">
                 <span class="material-icons-outlined">file_open</span>
                 Load
             </button>
@@ -125,7 +129,7 @@
     <div id="saveModal" class="modal hidden">
         <div class="modalCard">
             <h2>Save Wheel</h2>
-            <label class="modalLabel">Board Name</label>
+            <label class="modalLabel">Wheel Name</label>
             <input id="saveNameInput" class="modalInput" placeholder="My Awesome Wheel">
             <div class="modalActions">
                 <button id="cancelSaveAsBtn" class="secondaryBtn">Cancel</button>
@@ -137,7 +141,7 @@
     <div id="loadModal" class="modal hidden">
         <div class="modalCard">
             <h2>Load Wheel</h2>
-            <div id="loadList" class="boardList"></div>
+            <div id="loadList" class="wheelList"></div>
             <div class="modalActions">
                 <button id="closeLoadBtn" class="secondaryBtn">Close</button>
             </div>

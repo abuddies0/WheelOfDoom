@@ -9,9 +9,10 @@ const textModeArea = document.getElementById("textModeArea");
 const shuffleBtn = document.getElementById("shuffleBtn");
 
 // General toolbar buttons
-const saveBoardBtn = document.getElementById("saveBoardBtn");
-const saveAsBoardBtn = document.getElementById("saveAsBoardBtn");
-const loadBoardBtn = document.getElementById("loadBoardBtn");
+const newWheelBtn = document.getElementById("newWheelBtn");
+const saveWheelBtn = document.getElementById("saveWheelBtn");
+const saveAsWheelBtn = document.getElementById("saveAsWheelBtn");
+const loadWheelBtn = document.getElementById("loadWheelBtn");
 const copyBtn = document.getElementById("copyBtn");
 const importFile = document.getElementById("importFile");
 
@@ -29,7 +30,7 @@ const closeSettingsBtn = document.getElementById("closeSettingsBtn");
 const confirmSaveAsBtn = document.getElementById("confirmSaveAsBtn");
 const cancelSaveAsBtn = document.getElementById("cancelSaveAsBtn");
 
-const savedBoardsList = document.getElementById("savedBoardsList");
+const savedWheelsList = document.getElementById("savedWheelsList");
 const closeLoadBtn = document.getElementById("closeLoadBtn");
 
 const saveModal = document.getElementById("saveModal");
@@ -55,7 +56,7 @@ let settings = {
 
 let textModeActive = false;
 
-let currentBoard = null;
+let currentWheel = null;
 
 let radius = canvas.width / 2;
 
@@ -72,14 +73,14 @@ let knownTags = new Set();
 function saveState() {
     localStorage.setItem(
         "wheelState",
-        JSON.stringify(getBoardData())
+        JSON.stringify(getWheelData())
     );
 }
 
 function loadState() {
     const saved = localStorage.getItem("wheelState");
     if (saved) {
-        loadBoardData(JSON.parse(saved));
+        loadWheelData(JSON.parse(saved));
     }
 }
 
@@ -525,16 +526,18 @@ spinBtn.onclick = spin;
 
 exportBtn.onclick = () => {
     const blob = new Blob(
-        [JSON.stringify(getBoardData(), null, 2)],
+        [JSON.stringify(getWheelData(), null, 2)],
         { type: "application/json" }
     );
 
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "wheel-board.json";
+    a.download = "wheel.json";
     a.click();
 
     URL.revokeObjectURL(a.href);
+
+    showCard("Exported!", 3);
 };
 
 importBtn.onclick = () => importFile.click();
@@ -546,8 +549,14 @@ importFile.onchange = e => {
     const reader = new FileReader();
 
     reader.onload = () => {
-        wheelEntries = JSON.parse(reader.result);
-        rebuildTable();
+        try {
+            const data = JSON.parse(reader.result);
+            loadWheelData(data); // use the proper loader
+            showCard(`Imported ${file.name}`, 3);
+        } catch(err) {
+            console.error(err);
+            showCard("Failed to import file", 3);
+        }
     };
 
     reader.readAsText(file);
@@ -555,11 +564,11 @@ importFile.onchange = e => {
 
 copyBtn.onclick = () => {
     navigator.clipboard.writeText(JSON.stringify(wheelEntries));
-    alert("Copied JSON 👍");
+    showCard("Copied JSON 👍", 2);
 };
 
 function saveAs() {
-    saveNameInput.value = currentBoard || "";
+    saveNameInput.value = currentWheel || "";
     saveModal.classList.remove("hidden");
     saveNameInput.focus();
 }
@@ -568,12 +577,12 @@ confirmSaveAsBtn.onclick = () => {
     const name = saveNameInput.value.trim();
     if (!name) return;
 
-    const boards = getBoards();
+    const wheels = getWheels();
 
-    boards[name] = getBoardData();
+    wheels[name] = getWheelData();
 
-    currentBoard = name;
-    setBoards(boards);
+    currentWheel = name;
+    setWheels(wheels);
 
     saveModal.classList.add("hidden");
     showCard("Saved Successfully!", 4);
@@ -581,25 +590,25 @@ confirmSaveAsBtn.onclick = () => {
 
 cancelSaveAsBtn.onclick = () => saveModal.classList.add("hidden");
 
-saveBoardBtn.onclick = () => {
-    if (currentBoard == null) {
+saveWheelBtn.onclick = () => {
+    if (currentWheel == null) {
         saveAs();
         return;
     }
 
-    const boards = getBoards();
-    boards[currentBoard] = getBoardData();
+    const wheels = getWheels();
+    wheels[currentWheel] = getWheelData();
 
     showCard("Saved!", 2)
 
-    setBoards(boards);
+    setWheels(wheels);
 };
 
-saveAsBoardBtn.onclick = () => {
+saveAsWheelBtn.onclick = () => {
     saveAs();
 };
 
-loadBoardBtn.onclick = () => {
+loadWheelBtn.onclick = () => {
     loadModal.classList.remove("hidden");
     rebuildLoadMenu();
 };
@@ -607,27 +616,27 @@ loadBoardBtn.onclick = () => {
 function rebuildLoadMenu() {
     loadList.innerHTML = "";
 
-    const boards = getBoards();
+    const wheels = getWheels();
 
-    Object.keys(boards).forEach(name => {
+    Object.keys(wheels).forEach(name => {
 
         const row = document.createElement("div");
-        row.className = "boardRow";
+        row.className = "wheelRow";
 
         const title = document.createElement("div");
-        title.className = "boardName";
+        title.className = "wheelName";
         title.textContent = name;
 
         const btns = document.createElement("div");
-        btns.className = "boardBtns";
+        btns.className = "wheelBtns";
 
         const loadBtn = document.createElement("button");
         loadBtn.className = "primaryBtn";
         loadBtn.textContent = "Load";
         loadBtn.onclick = () => {
-            loadBoard(name);
+            loadWheel(name);
             loadModal.classList.add("hidden");
-            showCard("Board Loaded", 3);
+            showCard("Wheel Loaded", 3);
         };
 
         const delBtn = document.createElement("button");
@@ -636,9 +645,9 @@ function rebuildLoadMenu() {
         delBtn.onclick = () => {
             if (!confirm(`Delete "${name}"?`)) return;
 
-            const boards = getBoards();
-            delete boards[name];
-            setBoards(boards);
+            const wheels = getWheels();
+            delete wheels[name];
+            setWheels(wheels);
 
             rebuildLoadMenu();
             showCard("Deleted", 3);
@@ -650,16 +659,21 @@ function rebuildLoadMenu() {
     });
 }
 
-function loadBoard(name) {
-    const boards = getBoards();
-    if (!boards[name]) {
-        showCard(`Board "${name}" not found!`, 3);
+function loadWheel(name) {
+    const wheels = getWheels();
+    if (!wheels[name]) {
+        showCard(`Wheel "${name}" not found!`, 3);
         return;
     }
 
-    currentBoard = name;
-    loadBoardData(boards[name]);
-    showCard(`Board "${name}" loaded!`, 3);
+    currentWheel = name;
+    loadWheelData(wheels[name]);
+    showCard(`Wheel "${name}" loaded!`, 3);
+}
+
+newWheelBtn.onclick = () => {
+    loadWheelData({}); 
+    showCard("Made New Wheel!", 2);
 }
 
 /* --------------- Settings -------------- */
@@ -709,7 +723,7 @@ colorSchemeSelect.onchange = e => {
 };
 
 /* ------------ Local Cache ------------- */
-function getBoardData() {
+function getWheelData() {
     return {
         wheelEntries,
         enabledTags: [...enabledTags],
@@ -718,7 +732,7 @@ function getBoardData() {
     };
 }
 
-function loadBoardData(data) {
+function loadWheelData(data) {
     wheelEntries = data.wheelEntries || [{ tags: "fruit", weight: 1, text: "Apple" }];
     enabledTags = new Set(data.enabledTags || []);
     knownTags = new Set(data.knownTags || []);
@@ -728,12 +742,12 @@ function loadBoardData(data) {
     drawWheel();
 }
 
-function getBoards() {
-    return JSON.parse(localStorage.getItem("savedBoards") || "{}");
+function getWheels() {
+    return JSON.parse(localStorage.getItem("savedWheels") || "{}");
 }
 
-function setBoards(b) {
-    localStorage.setItem("savedBoards", JSON.stringify(b));
+function setWheels(b) {
+    localStorage.setItem("savedWheels", JSON.stringify(b));
 }
 
 /* ------------- Utilities ------------- */
