@@ -240,6 +240,20 @@ input {
     background-color: #9021da;
 }
 
+.wheelEntriesHeader {
+    display: flex;
+    align-items: center;
+    align-self: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    gap: 12px;
+}
+
+#wheelEntriesCount {
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
 /* ---------- Controls ---------- */
 
 .wheelEntries {

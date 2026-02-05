@@ -7,6 +7,7 @@ const tagFiltersDiv = document.getElementById("tagFilters");
 const textModeSwitch = document.getElementById("textModeSwitch");
 const textModeArea = document.getElementById("textModeArea");
 const shuffleBtn = document.getElementById("shuffleBtn");
+const wheelEntriesCountSpan = document.getElementById("wheelEntriesCount");
 
 // General toolbar buttons
 const newWheelBtn = document.getElementById("newWheelBtn");
@@ -175,6 +176,7 @@ function rebuildTable() {
     } catch (e) {
         console.log(e)
     }
+    updateWheelEntriesCount();
     saveState();
     drawWheel();
 
@@ -276,6 +278,12 @@ function makeTableDraggable() {
             saveState();
         });
     });
+}
+
+function updateWheelEntriesCount() {
+    const totalWheelEntries = wheelEntries.length;
+    const totalWeight = wheelEntries.reduce((sum, e) => sum + (+e.weight || 1), 0);
+    wheelEntriesCountSpan.textContent = `${totalWheelEntries}, ${totalWeight}`;
 }
 
 /* ---------------- Tags ---------------- */
