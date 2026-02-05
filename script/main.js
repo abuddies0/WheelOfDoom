@@ -68,6 +68,14 @@ let wheelEntries = [];
 let enabledTags = new Set();
 let knownTags = new Set();
 
+// Audio
+const spinAudio = new Audio("asset/sound/metal_pipe.mp3");
+spinAudio.loop = true; // keep looping while spinning
+
+const victoryAudio = new Audio("asset/sound/yippee.mp3");
+spinAudio.volume = 0.1;
+victoryAudio.volume = 0.2;
+
 
 /* ---------------- Persistence ---------------- */
 
@@ -432,6 +440,8 @@ function spin() {
     if (spinning) return;
 
     spinning = true;
+    spinAudio.currentTime = 0; // start from beginning
+    spinAudio.play();
 
     // Decide the winner (to make sure it's fully random each time)
     const winner = pullWeightedWheelEntry();
@@ -465,6 +475,9 @@ function spin() {
         if (p < 1) requestAnimationFrame(frame);
         else {
             spinning = false;
+            spinAudio.pause();
+            victoryAudio.currentTime = 0;
+            victoryAudio.play();
             showWinner(winner["wheelEntry"]);
         }
     }
@@ -701,6 +714,7 @@ function syncSpinStrength(val) {
     settings.spinStrength = +val;
     spinStrengthSlider.value = val;
     spinStrengthNumber.value = val;
+    saveState();
 }
 
 spinStrengthSlider.oninput = e =>
@@ -715,6 +729,7 @@ function syncSpinDuration(val) {
     settings.spinDuration = +val;
     spinDurationSlider.value = val;
     spinDurationNumber.value = val;
+    saveState();
 }
 
 spinDurationSlider.oninput = e =>
@@ -745,6 +760,14 @@ function loadWheelData(data) {
     enabledTags = new Set(data.enabledTags || []);
     knownTags = new Set(data.knownTags || []);
     settings = { ...settings, ...(data.settings || {}) };
+
+    spinStrengthSlider.value = settings.spinStrength;
+    spinStrengthNumber.value = settings.spinStrength;
+
+    spinDurationSlider.value = settings.spinDuration;
+    spinDurationNumber.value = settings.spinDuration;
+
+    colorSchemeSelect.value = settings.colorScheme;
 
     rebuildTable();
     drawWheel();
