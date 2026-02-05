@@ -49,10 +49,14 @@ const spinStrengthNumber = document.getElementById("spinStrengthNumber");
 const spinDurationSlider = document.getElementById("spinDurationSlider");
 const spinDurationNumber = document.getElementById("spinDurationNumber");
 const colorSchemeSelect = document.getElementById("colorSchemeSelect");
+const spinSoundSelect = document.getElementById("spinSoundSelect");
+const victorySoundSelect = document.getElementById("victorySoundSelect");
 let settings = {
     spinStrength: 12,
     spinDuration: 3.5, // seconds
-    colorScheme: "classic"
+    colorScheme: "classic",
+    spinSound: "metalpipe",
+    victorySound: "yippee"
 };
 
 let textModeActive = false;
@@ -69,12 +73,21 @@ let enabledTags = new Set();
 let knownTags = new Set();
 
 // Audio
-const spinAudio = new Audio("asset/sound/metal_pipe.mp3");
-spinAudio.loop = true; // keep looping while spinning
+let spinSound = new Audio("asset/sound/metal_pipe.mp3");
+spinSound.loop = true; // keep looping while spinning
 
-const victoryAudio = new Audio("asset/sound/yippee.mp3");
-spinAudio.volume = 0.1;
-victoryAudio.volume = 0.2;
+const spinSounds = {
+    metalpipe: "asset/sound/metal_pipe.mp3",
+    silence: "asset/sound/silence.mp3"
+}
+
+let victorySound = new Audio("asset/sound/yippee.mp3");
+spinSound.volume = 0.1;
+victorySound.volume = 0.2;
+const victorySounds = {
+    yippee: "asset/sound/yippee.mp3",
+    silence: "asset/sound/silence.mp3"
+}
 
 
 /* ---------------- Persistence ---------------- */
@@ -440,17 +453,14 @@ function spin() {
     if (spinning) return;
 
     spinning = true;
-    spinAudio.currentTime = 0; // start from beginning
-    spinAudio.play();
+    spinSound.currentTime = 0; // start from beginning
+    spinSound.play();
 
     // Decide the winner (to make sure it's fully random each time)
     const winner = pullWeightedWheelEntry();
 
     const slicePerWeight = Math.PI * 2 / getTotalWeight();
     const currentWeightPos = (angle % (2*Math.PI)) / slicePerWeight;
-    
-    // console.log(currentWeightPos);
-    // console.log(winner);
 
     const start = angle % (2 * Math.PI);
     let total =
@@ -459,8 +469,6 @@ function spin() {
     if (total < 0) { total += 2*Math.PI; }
 
     const duration = settings.spinDuration * 1000;
-
-    // console.log(total);
 
     let startTime;
 
@@ -475,9 +483,9 @@ function spin() {
         if (p < 1) requestAnimationFrame(frame);
         else {
             spinning = false;
-            spinAudio.pause();
-            victoryAudio.currentTime = 0;
-            victoryAudio.play();
+            spinSound.pause();
+            victorySound.currentTime = 0;
+            victorySound.play();
             showWinner(winner["wheelEntry"]);
         }
     }
@@ -534,6 +542,8 @@ settingsBtn.onclick = () => {
     spinDurationNumber.value = settings.spinDuration;
 
     colorSchemeSelect.value = settings.colorScheme;
+    spinSoundSelect.value = settings.spinSound;
+    victorySoundSelect.value = settings.victorySound;
 };
 
 closeSettingsBtn.onclick = () => {
@@ -745,6 +755,21 @@ colorSchemeSelect.onchange = e => {
     drawWheel();
 };
 
+spinSoundSelect.onchange = e => {
+    settings.spinSound = e.target.value;
+    spinSound.pause();
+    spinSound = new Audio(spinSounds[settings.spinSound]);
+    spinSound.loop = true;
+    spinSound.volume = 0.1;
+}
+
+victorySoundSelect.onchange = e => {
+    settings.victorySound = e.target.value;
+    victorySound.pause();
+    victorySound = new Audio(victorySounds[settings.victorySound]);
+    victorySound.volume = 0.2;
+}
+
 /* ------------ Local Cache ------------- */
 function getWheelData() {
     return {
@@ -768,6 +793,8 @@ function loadWheelData(data) {
     spinDurationNumber.value = settings.spinDuration;
 
     colorSchemeSelect.value = settings.colorScheme;
+    spinSoundSelect.value = settings.spinSound;
+    victorySoundSelect.value = settings.victorySound;
 
     rebuildTable();
     drawWheel();
