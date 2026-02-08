@@ -1,3 +1,8 @@
+/*----- PAGE-WIDE ---------*/
+:root {
+    --dark-bg: #111111;
+}
+
 * {
     box-sizing: border-box;
 }
@@ -30,27 +35,7 @@ body {
         inset 0 0 0 1px rgba(255,255,255,0.04);
 }
 
-.app-name {
-    position:absolute;
-    left: 50%;
-    top: 0;
-    transform: translateX(-50%) translateY(-40%);
-    z-index: 1;
-    font-size: 2em;
-}
-
-#appGrid {
-    display: grid;
-    grid-template-columns: 220px 1fr;
-    gap: 20px;
-
-    max-width: 1600px;
-    margin: 0 auto;
-    padding: 20px;
-}
-
-/* LEFT TOOL SIDEBAR */
-
+/*--------- GENERAL TOOLBAR -----------*/
 #generalToolbar {
     background: rgba(20, 20, 35, 0.75);
     backdrop-filter: blur(14px);
@@ -67,7 +52,6 @@ body {
         inset 0 0 0 1px rgba(120,140,255,0.15);
 }
 
-/* ---------------- TOOLS ---------------- */
 .toolBtn {
     background: linear-gradient(135deg, #2d2d55, #3a2f66);
     color: white;
@@ -90,92 +74,6 @@ body {
 .toolBtn:hover {
     transform: translateY(-1px);
     box-shadow: 0 6px 18px rgba(120,100,255,0.45);
-}
-
-/* ---------------- ENTRIES ---------------- */
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-}
-
-th, td {
-    padding: 6px;
-    border-bottom: 1px solid #2a2f3a;
-}
-
-input {
-    width: 100%;
-    background: #0f1219;
-    color: white;
-    border: 1px solid #2a2f3a;
-    border-radius: 6px;
-    padding: 4px;
-}
-
-.wheelEntriesToolbar {
-    display: flex;
-    gap: 6px;
-}
-
-#tagFilters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-}
-
-.tagToggle {
-    background: #2a2f3a;
-    padding: 4px 8px;
-    border-radius: 10px;
-    cursor: pointer;
-    font-size: 12px;
-}
-
-.tagToggle.active {
-    background: #6366f1;
-}
-
-#addEntryBtn {
-    background: linear-gradient(135deg, #2cff9a, #1ccf7b);
-    color: black;
-
-    border-radius: 14px;
-    font-size: 22px;
-
-    padding: 8px 14px;
-
-    width: 44px;
-    height: 44px;
-
-    display: grid;
-    place-items: center;
-
-    box-shadow: 0 6px 22px rgba(0,255,150,.45);
-}
-
-#addEntryBtn:hover {
-    transform: scale(1.08);
-}
-
-#textModeArea {
-    width: 100%;
-    height: 400px;
-    font-family: monospace;
-    font-size: 16px;
-    padding: 10px;
-    box-sizing: border-box;
-}
-
-.textModeToggle {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 5px;
-    font-weight: bold;
-    font-size: 16px;
 }
 
 .switch {
@@ -227,64 +125,6 @@ input {
   border-radius: 50%;
 }
 
-#shuffleBtn {
-    position: absolute;
-    right: -1px;
-    top: 0px;
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
-    padding: 0px 0px;
-    align-content: center;
-    justify-content: center;
-    background-color: #9021da;
-}
-
-.wheelEntriesHeader {
-    display: flex;
-    align-items: center;
-    align-self: center;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    gap: 12px;
-}
-
-#wheelEntriesCount {
-    font-weight: 500;
-    font-size: 0.95rem;
-}
-
-/* ---------- Controls ---------- */
-
-.wheelEntries {
-    width: 300px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-}
-
-.wheelEntries h1 {
-    margin: 0 0 8px;
-    font-size: 28px;
-}
-
-.wheelEntries-container {
-    width: 100%; /* Fixed width of the container */
-    height: 450px; /* Fixed height of the container */
-    overflow: auto; /* Adds scroll bars if content overflows */
-    scrollbar-width: none;
-    border: 1px solid #444444;
-    border-radius: 10px;
-    padding: 5px;
-}
-
-.tags-container {
-    width: 100%;
-    height: 150px;
-    scrollbar-width: none;
-    overflow: auto;
-}
-
 textarea {
     background: #0f1219;
     color: #fff;
@@ -321,6 +161,128 @@ button.primary {
 
 button.primary:hover {
     filter: brightness(1.1);
+}
+
+/* ---------------- ENTRIES ---------------- */
+
+.wheelEntriesHeader {
+    display: flex;
+    align-items: center;
+    align-self: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    gap: 12px;
+}
+
+.wheelEntries {
+    width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.wheelEntries h1 {
+    margin: 0 0 8px;
+    font-size: 28px;
+}
+
+.wheelEntries-container {
+    width: 100%; /* Fixed width of the container */
+    height: 450px; /* Fixed height of the container */
+    overflow: auto; /* Adds scroll bars if content overflows */
+    scrollbar-width: none;
+    border: 1px solid #444444;
+    border-radius: 10px;
+    padding: 5px;
+}
+
+.wheelEntriesToolbar {
+    display: flex;
+    gap: 6px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+th, td {
+    padding: 1px;
+    border-bottom: 1px solid #2a2f3a;
+}
+
+input {
+    width: 100%;
+    background: #0f1219;
+    color: white;
+    border: 1px solid #2a2f3a;
+    border-radius: 6px;
+    padding: 4px;
+}
+
+.textModeToggle {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+#textModeArea {
+    width: 100%;
+    height: 400px;
+    font-family: monospace;
+    font-size: 16px;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+#shuffleBtn {
+    position: absolute;
+    right: -1px;
+    top: 0px;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    padding: 0px 0px;
+    align-content: center;
+    justify-content: center;
+    background-color: #9021da;
+}
+
+#wheelEntriesCount {
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+/*-------------- TAGS ---------------*/
+
+#tagFilters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.tagToggle {
+    background: #2a2f3a;
+    padding: 4px 8px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.tagToggle.active {
+    background: #6366f1;
+}
+
+.tags-container {
+    width: 100%;
+    height: 150px;
+    scrollbar-width: none;
+    overflow: auto;
 }
 
 /* ---------- Wheel ---------- */
@@ -363,7 +325,7 @@ canvas {
     z-index: 1;
 }
 
-/* Settings Box*/
+/*------------ WHEEL SETTINGS ----------------*/
 
 .settings-btn {
     position: absolute;
@@ -380,22 +342,6 @@ canvas {
     font-size: 20px;
 
     background: #1f2333;
-}
-
-.settingsBox {
-    width: 420px;
-    max-width: 90vw;
-
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-}
-
-.settingsBox label {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin: 16px 0;
 }
 
 .settingsActions {
@@ -419,28 +365,6 @@ canvas {
     grid-column: 1 / -1;
     opacity: .65;
     font-size: 12px;
-}
-
-.settingsBox input[type="number"] {
-    background: linear-gradient(180deg,#0c1030,#090b1d);
-
-    color: #e5e7eb;
-
-    border: 1px solid #3b3f91;
-    border-radius: 10px;
-
-    padding: 8px 10px;
-
-    font-size: 13px;
-
-    outline: none;
-
-    box-shadow:
-        inset 0 0 0 1px rgba(99,102,241,.15);
-}
-
-.settingsBox input[type="number"]:focus {
-    border-color: #a78bfa;
 }
 
 #settingsModal {

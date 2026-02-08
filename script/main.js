@@ -16,7 +16,6 @@ const saveAsWheelBtn = document.getElementById("saveAsWheelBtn");
 const loadWheelBtn = document.getElementById("loadWheelBtn");
 const copyBtn = document.getElementById("copyBtn");
 const importFile = document.getElementById("importFile");
-
 const spinBtn = document.getElementById("spinBtn");
 
 // Modals
@@ -59,23 +58,8 @@ let settings = {
     victorySound: "yippee"
 };
 
-let textModeActive = false;
-
-let currentWheel = null;
-
-let radius = canvas.width / 2;
-
-let angle = 0;
-let spinning = false;
-
-let wheelEntries = [];
-let enabledTags = new Set();
-let knownTags = new Set();
-
-// Audio
 let spinSound = new Audio("asset/sound/metal_pipe.mp3");
 spinSound.loop = true; // keep looping while spinning
-
 const spinSounds = {
     metalpipe: "asset/sound/metal_pipe.mp3",
     silence: "asset/sound/silence.mp3"
@@ -89,22 +73,22 @@ const victorySounds = {
     silence: "asset/sound/silence.mp3"
 }
 
+// Entry Settings
+let textModeActive = false;
 
-/* ---------------- Persistence ---------------- */
+// Wheel(s) Data
+let currentWheel = null;
+let diameter = 650;
+let radius = diameter / 2;
+let angle = 0;
+let spinning = false;
 
-function saveState() {
-    localStorage.setItem(
-        "wheelState",
-        JSON.stringify(getWheelData())
-    );
-}
+let wheelEntries = [];
+let enabledTags = new Set();
+let knownTags = new Set();
 
-function loadState() {
-    const saved = localStorage.getItem("wheelState");
-    if (saved) {
-        loadWheelData(JSON.parse(saved));
-    }
-}
+
+
 
 /* ---------------- Wheel Entries ---------------- */
 
@@ -122,9 +106,9 @@ function rebuildTable() {
         const tr = document.createElement("tr");
 
         tr.innerHTML = `
-            <td><input value="${wheelEntry.tags}"></td>
-            <td><input type="number" min="1" value="${wheelEntry.weight}"></td>
             <td><input value="${wheelEntry.text}"></td>
+            <td><input type="number" min="1" value="${wheelEntry.weight}"></td>
+            <td><input value="${wheelEntry.tags}"></td>
             <td><button data-i="${i}">✕</button></td>
         `;
 
@@ -707,7 +691,7 @@ newWheelBtn.onclick = () => {
     showCard("Made New Wheel!", 2);
 }
 
-/* --------------- Settings -------------- */
+/* ------------ WHEEL SETTINGS ------------ */
 function applyWheelSize(size) {
     canvas.width = size;
     canvas.height = size;
@@ -734,7 +718,6 @@ spinStrengthNumber.oninput = e =>
     syncSpinStrength(e.target.value);
 
 
-
 function syncSpinDuration(val) {
     settings.spinDuration = +val;
     spinDurationSlider.value = val;
@@ -747,8 +730,6 @@ spinDurationSlider.oninput = e =>
 
 spinDurationNumber.oninput = e =>
     syncSpinDuration(e.target.value);
-
-
 
 colorSchemeSelect.onchange = e => {
     settings.colorScheme = e.target.value;
@@ -770,7 +751,56 @@ victorySoundSelect.onchange = e => {
     victorySound.volume = 0.2;
 }
 
-/* ------------ Local Cache ------------- */
+
+/* ------------- Utilities ------------- */
+const cardContainer = document.getElementById("cardContainer");
+
+function showCard(msg, seconds = 3) {
+    const card = document.createElement("div");
+    card.className = "toastCard";
+    card.textContent = msg;
+
+    const bar = document.createElement("div");
+    bar.className = "toastBar";
+
+    card.appendChild(bar);
+    cardContainer.appendChild(card);
+
+    bar.animate(
+        [{ width: "100%" }, { width: "0%" }],
+        { duration: seconds * 1000, easing: "linear" }
+    );
+
+    setTimeout(() => {
+        card.remove();
+    }, seconds * 1000);
+}
+
+
+/* ---------------- Persistence ---------------- */
+
+function getWheels() {
+    return JSON.parse(localStorage.getItem("savedWheels") || "{}");
+}
+
+function setWheels(b) {
+    localStorage.setItem("savedWheels", JSON.stringify(b));
+}
+
+function saveState() {
+    localStorage.setItem(
+        "wheelState",
+        JSON.stringify(getWheelData())
+    );
+}
+
+function loadState() {
+    const saved = localStorage.getItem("wheelState");
+    if (saved) {
+        loadWheelData(JSON.parse(saved));
+    }
+}
+
 function getWheelData() {
     return {
         wheelEntries,
@@ -800,37 +830,6 @@ function loadWheelData(data) {
     drawWheel();
 }
 
-function getWheels() {
-    return JSON.parse(localStorage.getItem("savedWheels") || "{}");
-}
-
-function setWheels(b) {
-    localStorage.setItem("savedWheels", JSON.stringify(b));
-}
-
-/* ------------- Utilities ------------- */
-const cardContainer = document.getElementById("cardContainer");
-
-function showCard(msg, seconds = 3) {
-    const card = document.createElement("div");
-    card.className = "toastCard";
-    card.textContent = msg;
-
-    const bar = document.createElement("div");
-    bar.className = "toastBar";
-
-    card.appendChild(bar);
-    cardContainer.appendChild(card);
-
-    bar.animate(
-        [{ width: "100%" }, { width: "0%" }],
-        { duration: seconds * 1000, easing: "linear" }
-    );
-
-    setTimeout(() => {
-        card.remove();
-    }, seconds * 1000);
-}
 
 /* ---------------- Init ---------------- */
 
