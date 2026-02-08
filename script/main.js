@@ -106,17 +106,17 @@ function rebuildTable() {
         const tr = document.createElement("tr");
 
         tr.innerHTML = `
-            <td><input value="${wheelEntry.text}"></td>
-            <td><input type="number" min="1" value="${wheelEntry.weight}"></td>
-            <td><input value="${wheelEntry.tags}"></td>
-            <td><button data-i="${i}">✕</button></td>
+            <td><input class="textEntry" value="${wheelEntry.text}"></td>
+            <td><input class="weightEntry" type="number" min="1" value="${wheelEntry.weight}"></td>
+            <td><input class="tagEntry" value="${wheelEntry.tags}"></td>
+            <td><button class="deleteEntryBtn" data-i="${i}">✕</button></td>
         `;
 
         tr.querySelectorAll("input").forEach(inp => {
             inp.oninput = () => {
-                wheelEntry.tags = tr.children[0].firstChild.value;
+                wheelEntry.text = tr.children[0].firstChild.value;
                 wheelEntry.weight = +tr.children[1].firstChild.value || 1;
-                wheelEntry.text = tr.children[2].firstChild.value;
+                wheelEntry.tags = tr.children[2].firstChild.value;
 
                 updateTagFilters();
                 saveState();
@@ -135,7 +135,7 @@ function rebuildTable() {
             if (e.key === "Enter") {
                 e.preventDefault();
                 const newWheelEntry = addWheelEntry();
-                newWheelEntry.childNodes[5].firstChild.focus();
+                newWheelEntry.childNodes[1].firstChild.focus();
             }
         });
 
@@ -412,15 +412,28 @@ function drawWheel() {
 
         let size = 22;
         ctx.font = `${size}px system-ui`;
-        while (ctx.measureText(text).width > radius*0.55 && size > 12) {
+        let textMeasure = ctx.measureText(text);
+        const arcLength = (slicePerWeight*weight) * 325;
+        while ((textMeasure.width > radius*0.55 || textMeasure.fontBoundingBoxAscent > arcLength) && size > 6) {
             size--;
             ctx.font = `${size}px system-ui`;
+            textMeasure = ctx.measureText(text);
         }
 
+        console.log(size);
+
         ctx.fillStyle = "#111";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.translate(radius*0.6,0);
+        if (size > 18) {
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.translate(radius*0.6,0);
+        } else {
+            ctx.textAlign = "right";
+            ctx.textBaseline = "middle";
+            ctx.translate(radius*0.99,0);
+        }
+    
+        
         ctx.fillText(text,0,0);
 
         ctx.restore();

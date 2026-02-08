@@ -23,8 +23,8 @@ body {
 
 .app {
     display: flex;
-    gap: 40px;
-    padding: 34px 44px;
+    gap: 10px;
+    padding: 32px 40px;
 
     background: linear-gradient(180deg, #181c27, #11141d);
 
@@ -33,6 +33,9 @@ body {
     box-shadow:
         0 40px 120px rgba(0,0,0,0.8),
         inset 0 0 0 1px rgba(255,255,255,0.04);
+
+    height: min(100%, 600px);
+    aspect-ratio: 5/3;
 }
 
 /*--------- GENERAL TOOLBAR -----------*/
@@ -221,6 +224,23 @@ input {
     padding: 4px;
 }
 
+.deleteEntryBtn {
+    height: 20px;
+    width: 20px;
+    justify-self: center;
+    align-self: center;
+    padding: 0px;
+    justify-content: center;
+    align-content: center;
+    margin: 1px;
+    font-size: 10px;
+    background-color: #440000;
+}
+
+.deleteEntryBtn:hover{
+    background-color: #880000;
+}
+
 .textModeToggle {
     position: relative;
     display: flex;
@@ -229,6 +249,10 @@ input {
     margin-bottom: 5px;
     font-weight: bold;
     font-size: 16px;
+}
+
+#textModeToggleText {
+    padding: 1px 5px;
 }
 
 #textModeArea {
@@ -256,6 +280,23 @@ input {
 #wheelEntriesCount {
     font-weight: 500;
     font-size: 0.95rem;
+}
+
+.textEntry {
+    font-size: 12px;
+    /* width: 150%; */
+}
+
+.weightEntry {
+    font-size: 12px;
+    text-align: center;
+    /* margin: 0 50%;
+    width: 50%; */
+}
+
+.tagEntry {
+    font-size: 10px;
+    color: #cccccc;
 }
 
 /*-------------- TAGS ---------------*/
