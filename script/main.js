@@ -87,6 +87,9 @@ let wheelEntries = [];
 let enabledTags = new Set();
 let knownTags = new Set();
 
+let riggedTarget = null;
+let riggedAmount = 0;
+
 
 
 
@@ -420,8 +423,6 @@ function drawWheel() {
             textMeasure = ctx.measureText(text);
         }
 
-        console.log(size);
-
         ctx.fillStyle = "#111";
         if (size > 18) {
             ctx.textAlign = "center";
@@ -490,15 +491,30 @@ function spin() {
     requestAnimationFrame(frame);
 }
 
+/**
+ * The forces the wheel to land on {riggedTarget} for {riggedAmount} times.
+ * Prints out a message depending on if the target was found.
+ * @param {string} rigTarget The target to land on
+ * @param {number} numberOfRiggedSpins The number of times to land on the target (default=1)
+ */
+function rig(rigTarget, numberOfRiggedSpins=1) {
+    if (getActiveWheelEntrys().map(entry => entry.text).includes(rigTarget)) {
+        riggedTarget = rigTarget;
+        riggedAmount = numberOfRiggedSpins;
+        console.log(`Successfully rigged the wheel to get '${rigTarget}' ${numberOfRiggedSpins} time${numberOfRiggedSpins > 1 ? "s" : ""}!`);
+    }
+    else {
+        console.log(`Failed to rig: could not find entry with the name ${rigTarget}.`);
+    }
+}
+
 function getPointerWheelEntry() {
     const wheelEntries = getActiveWheelEntrys();
     const slicePerWeight = Math.PI * 2 / getTotalWeight();
     let currentWeightPos = (angle % (2*Math.PI)) / slicePerWeight;
-    console.log(currentWeightPos);
     for (const wheelEntry of wheelEntries) {
         currentWeightPos -= wheelEntry["weight"];
         if (currentWeightPos <= 0) {
-            console.log(wheelEntry);
             return;
         }
     }
@@ -507,6 +523,21 @@ function getPointerWheelEntry() {
 function pullWeightedWheelEntry() {
     const wheelEntries = getActiveWheelEntrys();
 
+    // Account for rigging
+    if (riggedAmount > 0 && wheelEntries.map(entry => entry.text).includes(riggedTarget)) {
+        riggedAmount--;
+        let t = getEntryByName(riggedTarget);
+        let weight = 0;
+        for (const wheelEntry of wheelEntries) {
+            if (wheelEntry == t) {
+                break;
+            }
+            weight += wheelEntry.weight;
+        }
+        return {weight: weight, wheelEntry: t}
+    }
+
+    // Failed to rig
     const totalWeight = getTotalWeight();
 
     const winningWeight = totalWeight * Math.random();
@@ -523,6 +554,16 @@ function pullWeightedWheelEntry() {
 function showWinner(winningWheelEntry) {
     winnerText.textContent = winningWheelEntry["text"];
     modal.classList.remove("hidden");
+}
+
+function getEntryByName(name) {
+    const entries = getActiveWheelEntrys();
+    for (const entry of entries) {
+        if (entry.text == name) {
+            return entry;
+        }
+    }
+    return null;
 }
 
 closeModalBtn.onclick = () => {
