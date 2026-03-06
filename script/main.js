@@ -1,3 +1,5 @@
+import { Wheel, WheelEntry } from 'script/wheel.js'
+
 const canvas = document.getElementById("wheelCanvas");
 const ctx = canvas.getContext("2d");
 
