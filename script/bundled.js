@@ -202,7 +202,9 @@ function initializeDOMStuff(editingWheel, saveState, spin) {
             const wheels = getSavedWheels();
 
             // @ts-ignore
-            wheels[name] = editingWheel.toJSON();
+            const wheelJSON = editingWheel.toJSON();
+            wheelJSON['name'] = name;
+            wheels[name] = wheelJSON;
 
             editingWheel.setName(name);
             // @ts-ignore
@@ -231,7 +233,7 @@ function initializeDOMStuff(editingWheel, saveState, spin) {
             // @ts-ignore
             wheels[editingWheel.getName()] = editingWheel.toJSON();
 
-            showCard("Saved!", 2)
+            showCard(`Saved '${editingWheel.getName()}'`, 2)
 
             // @ts-ignore
             setSavedWheels(wheels);
