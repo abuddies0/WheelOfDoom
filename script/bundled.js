@@ -1,5 +1,424 @@
-//@ts-check
+ // @ts-check
 
+ const DOM_ELEMENTS = {
+     canvas: document.getElementById("wheelCanvas"),
+
+    // Wheel Entries
+     tableBody: document.querySelector("#wheelEntryTable tbody"),
+     tagFiltersDiv: document.getElementById("tagFilters"),
+     textModeSwitch: document.getElementById("textModeSwitch"),
+     textModeArea: document.getElementById("textModeArea"),
+     shuffleBtn: document.getElementById("shuffleBtn"),
+     wheelEntriesCountSpan: document.getElementById("wheelEntriesCount"),
+
+    // General toolbar buttons
+     newWheelBtn: document.getElementById("newWheelBtn"),
+     saveWheelBtn: document.getElementById("saveWheelBtn"),
+     saveAsWheelBtn: document.getElementById("saveAsWheelBtn"),
+     loadWheelBtn: document.getElementById("loadWheelBtn"),
+     copyBtn: document.getElementById("copyBtn"),
+     importFile: document.getElementById("importFile"),
+     importBtn: document.getElementById("importBtn"),
+     exportBtn: document.getElementById("exportBtn"),
+     spinBtn: document.getElementById("spinBtn"),
+
+    // Modals
+     modal: document.getElementById("winnerModal"),
+     winnerText: document.getElementById("winnerText"),
+     closeModalBtn: document.getElementById("closeModalBtn"),
+
+     settingsBtn: document.getElementById("settingsBtn"),
+     settingsModal: document.getElementById("settingsModal"),
+     closeSettingsBtn: document.getElementById("closeSettingsBtn"),
+
+     confirmSaveAsBtn: document.getElementById("confirmSaveAsBtn"),
+     cancelSaveAsBtn: document.getElementById("cancelSaveAsBtn"),
+
+     savedWheelsList: document.getElementById("savedWheelsList"),
+     closeLoadBtn: document.getElementById("closeLoadBtn"),
+
+     saveModal: document.getElementById("saveModal"),
+     loadModal: document.getElementById("loadModal"),
+
+     saveNameInput: document.getElementById("saveNameInput"),
+     loadList: document.getElementById("loadList"),
+
+    // Wheel Settings
+     spinStrengthSlider: document.getElementById("spinStrengthSlider"),
+     spinStrengthNumber: document.getElementById("spinStrengthNumber"),
+     spinDurationSlider: document.getElementById("spinDurationSlider"),
+     spinDurationNumber: document.getElementById("spinDurationNumber"),
+     colorSchemeSelect: document.getElementById("colorSchemeSelect"),
+     spinSoundSelect: document.getElementById("spinSoundSelect"),
+     victorySoundSelect: document.getElementById("victorySoundSelect")
+};
+
+
+/**
+ * Initializes all the DOM stuff given the primary wheel
+ * @param {Wheel} editingWheel The wheel that is currently being edited
+ * @param {() => void} saveState Call this to save the settings in the wheel
+ */
+function initializeDOMStuff(editingWheel, saveState) {
+    if (DOM_ELEMENTS.cancelSaveAsBtn != null) {
+        DOM_ELEMENTS.cancelSaveAsBtn.onclick = () => { if (DOM_ELEMENTS.saveModal !=  null) DOM_ELEMENTS.saveModal.classList.add("hidden")};
+    }
+    if (DOM_ELEMENTS.closeLoadBtn != null && DOM_ELEMENTS.loadModal !=  null) {
+        DOM_ELEMENTS.closeLoadBtn.onclick = () => { if (DOM_ELEMENTS.loadModal !=  null) DOM_ELEMENTS.loadModal.classList.add("hidden")};
+    }
+
+    // General Modal
+    if (DOM_ELEMENTS.closeModalBtn != null) {
+        DOM_ELEMENTS.closeModalBtn.onclick = () => {
+            if (DOM_ELEMENTS.modal == null) { return; }
+            DOM_ELEMENTS.modal.classList.add("hidden");
+        };
+    }
+
+    // Settings
+    if (DOM_ELEMENTS.settingsBtn != null) {
+        DOM_ELEMENTS.settingsBtn.onclick = () => {
+            if (DOM_ELEMENTS.settingsModal != null)
+                DOM_ELEMENTS.settingsModal.classList.remove("hidden");
+
+            if (DOM_ELEMENTS.spinStrengthSlider != null && DOM_ELEMENTS.spinStrengthSlider instanceof HTMLInputElement)
+                DOM_ELEMENTS.spinStrengthSlider.value = String(editingWheel.spinStrength);
+            if (DOM_ELEMENTS.spinStrengthNumber != null && DOM_ELEMENTS.spinStrengthNumber instanceof HTMLInputElement)
+                DOM_ELEMENTS.spinStrengthNumber.value = String(editingWheel.spinStrength);
+
+            if (DOM_ELEMENTS.spinDurationSlider != null && DOM_ELEMENTS.spinDurationSlider instanceof HTMLInputElement)
+                DOM_ELEMENTS.spinDurationSlider.value = String(editingWheel.spinDuration);
+            if (DOM_ELEMENTS.spinDurationNumber != null && DOM_ELEMENTS.spinDurationNumber instanceof HTMLInputElement)
+                DOM_ELEMENTS.spinDurationNumber.value = String(editingWheel.spinDuration);
+
+            if (DOM_ELEMENTS.colorSchemeSelect != null && DOM_ELEMENTS.colorSchemeSelect instanceof HTMLInputElement)
+                DOM_ELEMENTS.colorSchemeSelect.value = Wheel.getColorSchemeFromFunction(editingWheel.colorScheme) || "";
+            if (DOM_ELEMENTS.spinSoundSelect != null && DOM_ELEMENTS.spinSoundSelect instanceof HTMLInputElement)
+                DOM_ELEMENTS.spinSoundSelect.value = Wheel.getSpinSoundFromAudio(editingWheel.spinSound) || "";
+            if (DOM_ELEMENTS.victorySoundSelect != null && DOM_ELEMENTS.victorySoundSelect instanceof HTMLInputElement)
+                DOM_ELEMENTS.victorySoundSelect.value = Wheel.getWinSoundFromAudio(editingWheel.winSound) || "";
+        };
+    }
+
+    if (DOM_ELEMENTS.closeSettingsBtn != null) {
+        DOM_ELEMENTS.closeSettingsBtn.onclick = () => {
+            if (DOM_ELEMENTS.settingsModal == null) { return null; }
+            DOM_ELEMENTS.settingsModal.classList.add("hidden");
+        };
+    }
+
+    // Spin the wheel
+    if (DOM_ELEMENTS.canvas != null && DOM_ELEMENTS.canvas instanceof HTMLInputElement) {
+        DOM_ELEMENTS.canvas.onclick = () => { editingWheel.spin((new Date()).getTime()) };
+    }
+    if (DOM_ELEMENTS.spinBtn != null) {
+        DOM_ELEMENTS.spinBtn.onclick = () => { editingWheel.spin((new Date()).getTime()) };
+    }
+
+    // Import / Export
+    if (DOM_ELEMENTS.exportBtn != null) {
+        DOM_ELEMENTS.exportBtn.onclick = () => {
+            if (editingWheel == null) { return; }
+            const blob = new Blob(
+                [JSON.stringify(editingWheel.toJSON(), null, 2)],
+                { type: "application/json" }
+            );
+
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "wheel.json";
+            a.click();
+
+            URL.revokeObjectURL(a.href);
+
+            showCard("Exported!", 3);
+        };
+    }
+    
+    if (DOM_ELEMENTS.importBtn != null) {
+        DOM_ELEMENTS.importBtn.onclick = () => { if (DOM_ELEMENTS.importFile != null) DOM_ELEMENTS.importFile.click() };
+    }
+    
+    if (DOM_ELEMENTS.importFile != null) {
+        DOM_ELEMENTS.importFile.onchange = e => {
+            if (e == null || e.target == null) { return; }
+            // @ts-ignore
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+
+            reader.onload = () => {
+                try {
+                    const data = JSON.parse(reader.result ? String(reader.result) : "");
+                    loadWheelData(data); // use the proper loader
+                    showCard(`Imported ${file.name}`, 3);
+                } catch(err) {
+                    console.error(err);
+                    showCard("Failed to import file", 3);
+                }
+            };
+
+            reader.readAsText(file);
+            saveState();
+        };
+    }
+
+    // Copy
+    if (DOM_ELEMENTS.copyBtn != null) {
+        DOM_ELEMENTS.copyBtn.onclick = () => {
+            if (editingWheel == null) { return; }
+            navigator.clipboard.writeText(JSON.stringify(editingWheel.toJSON()));
+            showCard("Copied JSON", 2);
+        };
+    }
+    
+    // Saving / Loading
+    function saveAs() {
+        if (DOM_ELEMENTS.saveNameInput == null ||
+            DOM_ELEMENTS.saveModal == null ||
+            DOM_ELEMENTS.saveNameInput == null ||
+            !(DOM_ELEMENTS.saveNameInput instanceof HTMLInputElement)
+        ) { return; }
+        DOM_ELEMENTS.saveNameInput.value = editingWheel.getName();
+        DOM_ELEMENTS.saveModal.classList.remove("hidden");
+        DOM_ELEMENTS.saveNameInput.focus();
+
+        saveState();
+    }
+
+    if (DOM_ELEMENTS.confirmSaveAsBtn != null) {
+        DOM_ELEMENTS.confirmSaveAsBtn.onclick = () => {
+            if (DOM_ELEMENTS.saveNameInput == null || 
+                !(DOM_ELEMENTS.saveNameInput instanceof HTMLInputElement) ||
+                editingWheel == null ||
+                DOM_ELEMENTS.saveModal == null
+            ) { return; }
+            const name = DOM_ELEMENTS.saveNameInput.value.trim();
+            if (!name) return;
+
+            const wheels = getSavedWheels();
+
+            // @ts-ignore
+            wheels[name] = editingWheel.toJSON();
+
+            editingWheel.setName(name);
+            // @ts-ignore
+            setSavedWheels(wheels);
+
+            DOM_ELEMENTS.saveModal.classList.add("hidden");
+            showCard("Saved Successfully!", 4);
+        };
+    }
+
+    if (DOM_ELEMENTS.cancelSaveAsBtn != null) {
+        DOM_ELEMENTS.cancelSaveAsBtn.onclick = () => {
+            if (DOM_ELEMENTS.saveModal != null) { DOM_ELEMENTS.saveModal.classList.add("hidden"); }
+        }
+    }
+
+    if (DOM_ELEMENTS.saveWheelBtn != null) {
+        DOM_ELEMENTS.saveWheelBtn.onclick = () => {
+            if (editingWheel == null) { return null; }
+            if (editingWheel.getName() == null || editingWheel.getName() == "") {
+                saveAs();
+                return;
+            }
+
+            const wheels = getSavedWheels();
+            // @ts-ignore
+            wheels[editingWheel.getName()] = editingWheel.toJSON();
+
+            showCard("Saved!", 2)
+
+            // @ts-ignore
+            setSavedWheels(wheels);
+        };
+    }
+
+    if (DOM_ELEMENTS.saveAsWheelBtn != null) {
+        DOM_ELEMENTS.saveAsWheelBtn.onclick = () => {
+            saveAs();
+        };
+    }
+
+    if (DOM_ELEMENTS.loadWheelBtn != null) {
+        DOM_ELEMENTS.loadWheelBtn.onclick = () => {
+            if (DOM_ELEMENTS.loadModal == null) { return; }
+            DOM_ELEMENTS.loadModal.classList.remove("hidden");
+            rebuildLoadMenu();
+        };
+    }
+
+    function rebuildLoadMenu() {
+        if (DOM_ELEMENTS.loadList == null) { return; }
+        DOM_ELEMENTS.loadList.innerHTML = "";
+
+        const wheels = getSavedWheels();
+
+        Object.keys(wheels).forEach(name => {
+
+            const row = document.createElement("div");
+            row.className = "wheelRow";
+
+            const title = document.createElement("div");
+            title.className = "wheelName";
+            title.textContent = name;
+
+            const btns = document.createElement("div");
+            btns.className = "wheelBtns";
+
+            const loadBtn = document.createElement("button");
+            loadBtn.className = "primaryBtn";
+            loadBtn.textContent = "Load";
+            loadBtn.onclick = () => {
+                if (DOM_ELEMENTS.loadModal == null) { return; }
+                loadWheel(name);
+                DOM_ELEMENTS.loadModal.classList.add("hidden");
+                showCard("Wheel Loaded", 3);
+            };
+
+            const delBtn = document.createElement("button");
+            delBtn.className = "deleteBtn";
+            delBtn.textContent = "Delete";
+            delBtn.onclick = () => {
+                if (!confirm(`Delete "${name}"?`)) return;
+
+                const wheels = getSavedWheels();
+                // @ts-ignore
+                delete wheels[name];
+                // @ts-ignore
+                setSavedWheels(wheels);
+
+                rebuildLoadMenu();
+                showCard("Deleted", 3);
+            };
+
+            btns.append(loadBtn, delBtn);
+            row.append(title, btns);
+            if (DOM_ELEMENTS.loadList == null) { return; }
+            DOM_ELEMENTS.loadList.append(row);
+        });
+    }
+
+    /** @param {string} name The name of the wheel */
+    function loadWheel(name) {
+        if (editingWheel == null) { return; }
+        const wheels = getSavedWheels();
+        // @ts-ignore
+        if (!wheels[name]) {
+            showCard(`Wheel "${name}" not found!`, 3);
+            return;
+        }
+
+        // @ts-ignore
+        loadWheelData(wheels[name])
+        showCard(`Wheel "${name}" loaded!`, 3);
+    }
+
+    if (DOM_ELEMENTS.newWheelBtn != null) {
+        DOM_ELEMENTS.newWheelBtn.onclick = () => {
+            loadWheelData(Wheel.baseWheel().toJSON()); 
+            showCard("Made New Wheel!", 2);
+        }
+
+        saveState();
+    }
+
+    /* ------------ WHEEL SETTINGS ------------ */
+    
+    /** @param {number} value */
+    function syncSpinStrength(value) {
+        if (editingWheel == null) { return; }
+        editingWheel.spinStrength = value;
+        if (DOM_ELEMENTS.spinStrengthSlider != null && DOM_ELEMENTS.spinStrengthSlider instanceof HTMLInputElement)
+            DOM_ELEMENTS.spinStrengthSlider.value = String(value);
+        if (DOM_ELEMENTS.spinStrengthNumber != null && DOM_ELEMENTS.spinStrengthNumber instanceof HTMLInputElement)
+            DOM_ELEMENTS.spinStrengthNumber.value = String(value);
+        saveState();
+    }
+    
+    if (DOM_ELEMENTS.spinStrengthSlider != null) {
+        DOM_ELEMENTS.spinStrengthSlider.oninput = e => {
+            if (e.target != null) {
+                // @ts-ignore
+                syncSpinStrength(Number(e.target.value));
+            }
+        };
+    }
+    
+    if (DOM_ELEMENTS.spinStrengthNumber != null) {
+        DOM_ELEMENTS.spinStrengthNumber.oninput = e => {
+            if (e.target != null) {
+                // @ts-ignore
+                syncSpinStrength(Number(e.target.value));
+            }
+        };
+    }
+    
+    /** @param {number} value */
+    function syncSpinDuration(value) {
+        if (editingWheel == null) { return; }
+        editingWheel.spinDuration = value;
+        if (DOM_ELEMENTS.spinDurationSlider != null && DOM_ELEMENTS.spinDurationSlider instanceof HTMLInputElement)
+            DOM_ELEMENTS.spinDurationSlider.value = String(value);
+        if (DOM_ELEMENTS.spinDurationNumber != null && DOM_ELEMENTS.spinDurationNumber instanceof HTMLInputElement)
+            DOM_ELEMENTS.spinDurationNumber.value = String(value);
+        saveState();
+    }
+    
+    if (DOM_ELEMENTS.spinDurationSlider != null) {
+        DOM_ELEMENTS.spinDurationSlider.oninput = e => {
+            if (e.target != null) {
+                // @ts-ignore
+                syncSpinDuration(Number(e.target.value));
+            }
+        };
+    }
+
+    if (DOM_ELEMENTS.spinDurationNumber != null) {
+        DOM_ELEMENTS.spinDurationNumber.oninput = e => {
+            if (e.target != null) {
+                // @ts-ignore
+                syncSpinDuration(Number(e.target.value));
+            }
+        };
+    }
+
+    if (DOM_ELEMENTS.colorSchemeSelect != null) {
+        DOM_ELEMENTS.colorSchemeSelect.oninput = e => {
+            if (e.target != null) {
+                // @ts-ignore
+                editingWheel.colorScheme = Wheel.COLOR_SCHEMES[e.target.value]
+            }
+            saveState();
+        };
+    }
+
+    if (DOM_ELEMENTS.spinSoundSelect != null) {
+        DOM_ELEMENTS.spinSoundSelect.oninput = e => {
+            if (e.target != null) {
+                // @ts-ignore
+                editingWheel.spinSound = Wheel.SPIN_SOUNDS[e.target.value]
+            }
+            saveState();
+        };
+    }
+
+    if (DOM_ELEMENTS.victorySoundSelect != null) {
+        DOM_ELEMENTS.victorySoundSelect.oninput = e => {
+            if (e.target != null) {
+                // @ts-ignore
+                editingWheel.winSound = Wheel.WIN_SOUNDS[e.target.value]
+            }
+            saveState();
+        };
+    }
+
+    if (editingWheel != null && DOM_ELEMENTS.canvas != null && DOM_ELEMENTS.canvas instanceof HTMLCanvasElement) {
+        editingWheel.setCanvas(DOM_ELEMENTS.canvas);
+    }
+}
 /**
      * @typedef {Object} SavedWheelEntry A wheel entry in JSON format
      * @property {string} value The text value of this wheel entry
@@ -35,7 +454,7 @@
  *  <li> Saving </li>
  * </ul>
  */
-export class Wheel {
+class Wheel {
     /** @type {boolean} True if the static variables are properly initialized */
     static INITIALIZED = false;
 
@@ -317,6 +736,7 @@ export class Wheel {
             // Update rotation
             const p = Math.min((time-this.spinStartTime)/this.spinDuration, 1);
             this.rotation = this.initialRotation + (this.targetRotation - this.initialRotation) * (1-Math.pow(1-p,2));
+            console.log(`${this.rotation}, ${this.initialRotation}, ${this.targetRotation}`);
         }
         else if (this.isSpinning) {
             this.isSpinning = false;
@@ -767,7 +1187,7 @@ export class Wheel {
  *  <li> The tags of the entry </li>
  * </ul>
  */
-export class WheelEntry {
+class WheelEntry {
     
     /**
      * Creates a new entry. This must be placed in a wheel separately.
@@ -881,4 +1301,451 @@ export class WheelEntry {
     setTags(tags) {
         this.tags = tags;
     }
+}// @ts-check
+
+
+/** @type {boolean} True if editing entries through text */
+let textModeActive = false;
+
+/** @type {Array<Wheel>} All the wheels on screen. The first wheel in the list is the one being edited on the left */
+let wheels = new Array();
+/** @type {Wheel|null} The wheel that is currently being edited. */
+let editingWheel = null;
+
+
+
+
+
+/* ---------------- Wheel Entries ---------------- */
+
+/**
+ * Adds the given wheel entry (to the primary wheel by default (index 0))
+ * @param {WheelEntry} wheelEntry The data to add as a wheel entry
+ * @param {Wheel|null} wheel The wheel to add the entry to
+ */
+function addWheelEntry(wheelEntry=new WheelEntry("", 1, new Array()), wheel=null) {
+    if (wheel == null && editingWheel != null) {
+        editingWheel.addEntry(wheelEntry);
+    }
+    else if (wheel != null) {
+        wheel.addEntry(wheelEntry);
+    }
+    rebuildTable();
 }
+
+
+/**
+ * Rebuilds the table with all elements present in the editing wheel.
+ */
+function rebuildTable() {
+    // Make sure all things we care about are not null
+    if (DOM_ELEMENTS.tableBody == null || editingWheel == null) {
+        return;
+    }
+    // Wipe the table
+    DOM_ELEMENTS.tableBody.innerHTML = "";
+
+    editingWheel.getWheelEntries().forEach((wheelEntry, i) => {
+        // Make a new row for each wheel entry
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+            <td><input class="textEntry" value="${wheelEntry.getValue()}"></td>
+            <td><input class="weightEntry" type="number" min="1" value="${wheelEntry.getWeight()}"></td>
+            <td><input class="tagEntry" value="${wheelEntry.getTags()}"></td>
+            <td><button class="deleteEntryBtn" data-i="${i}">✕</button></td>
+        `;
+
+        const wheelEntryCell = tr.children[0].firstChild;
+        const weightCell = tr.children[1].firstChild;
+        const tagsCell = tr.children[2].firstChild;
+        if (wheelEntryCell == null || !(wheelEntryCell instanceof HTMLInputElement)) { return; }
+        if (weightCell == null || !(weightCell instanceof HTMLInputElement)) { return; }
+        if (tagsCell == null || !(tagsCell instanceof HTMLInputElement)) { return; }
+
+        // textEntry, weightEntry, tagEntry
+        tr.querySelectorAll("input").forEach(inp => {
+            inp.oninput = () => {
+                // Typescript doesn't understand my genius (because I'm editing DOM using string above...)
+                wheelEntry.setValue(wheelEntryCell.value || "");
+                wheelEntry.setWeight(Number(weightCell.value) || 1);
+                wheelEntry.setTags(tagsCell.value ? tagsCell.value.split(",").map(t => t.trim()) : new Array());
+
+                if (editingWheel != null) { editingWheel.updateEntries(editingWheel.enabledTags); }
+                updateTagFilters();
+            };
+        });
+
+        // Delete button
+        // Typescript doesn't understand my genius (because I'm editing DOM using string above...)
+        // @ts-ignore
+        tr.querySelector("button").onclick = () => {
+            if (editingWheel == null) { return; }
+            editingWheel.removeEntry(wheelEntry);
+            rebuildTable();
+        };
+
+        // Whenever <Enter> is pressed, it makes a new element
+        wheelEntryCell.addEventListener("keydown", e => {
+            // Typescript why
+            if (!(e instanceof KeyboardEvent)) { return; }
+            if (e.key === "Enter") {
+                e.preventDefault();
+                const newWheelEntry = addWheelEntry();
+
+                if (DOM_ELEMENTS.tableBody == null || 
+                    DOM_ELEMENTS.tableBody.lastChild == null ||
+                    !(DOM_ELEMENTS.tableBody.lastChild instanceof HTMLElement))
+                {
+                    return;
+                }
+                DOM_ELEMENTS.tableBody.lastChild.focus();
+            }
+        });
+
+        // Multiline pasting
+        wheelEntryCell.addEventListener("paste", e => {
+            if (!(e instanceof ClipboardEvent)) { return; }
+            if (e.clipboardData == null) { return; }
+
+            const text = e.clipboardData.getData("text");
+            // only special-handle multiline paste
+            if (!text.includes("\n")) return;
+
+            e.preventDefault();
+
+            const lines = text
+                .split(/\r?\n/)
+                .map(l => l.trim())
+                .filter(Boolean);
+
+            if (!lines.length) return;
+
+            // replace current row text
+            wheelEntry.setValue(lines[0]);
+            wheelEntryCell.value = lines[0];
+
+            // insert remaining as new entries
+            const insertIndex = i + 1;
+
+            const newOnes = lines.slice(1).map(line => {
+                const newWheelEntry = WheelEntry.fromText(line);
+                if (newWheelEntry != null) { if (editingWheel != null) editingWheel.addEntry(newWheelEntry); }
+            });
+
+            rebuildTable();
+        });
+
+        // Sometimes typescript hates me
+        if (DOM_ELEMENTS.tableBody == null) { return; }
+        DOM_ELEMENTS.tableBody.appendChild(tr);
+    });
+
+    updateTagFilters();
+    updateWheelEntriesCount();
+    saveState();
+
+    makeTableDraggable();
+}
+
+
+/***
+ * Populates the textModeArea with all editing wheel entries
+ */
+function populateTextModeArea() {
+    if (editingWheel == null || DOM_ELEMENTS.textModeArea == null) { return; }
+    if (!(DOM_ELEMENTS.textModeArea instanceof HTMLTextAreaElement)) { return; }
+    const lines = editingWheel.getWheelEntries().map(wheelEntry => {
+        return wheelEntry.toText();
+    });
+    DOM_ELEMENTS.textModeArea.value = lines.join("\n");
+}
+
+/**
+ * This overwrites all existing wheel entries with the text area entries.
+ */
+function convertTextModeAreaToWheelEntries() {
+    if (DOM_ELEMENTS.textModeArea == null || !(DOM_ELEMENTS.textModeArea instanceof HTMLTextAreaElement)) { return; }
+    if (editingWheel == null) { return null; }
+    const lines = DOM_ELEMENTS.textModeArea.value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const newEntries = lines.map(line => {
+        const parts = line.split("|").map(p => p.trim());
+        return new WheelEntry(
+            parts.length >= 1 ? parts[0] : "",
+            parts.length >= 2 ? Number(parts[1]) || 1 : 1,
+            parts.length >= 3 ? parts[2].split(",") : new Array()
+        );
+    });
+    editingWheel.setEntries(newEntries);
+    rebuildTable();
+    saveState();
+}
+
+
+/**
+ * Makes all elements in the wheel entries table draggable.
+ */
+function makeTableDraggable() {
+    /** @type {null|number} */
+    let draggedIndex = null;
+
+    if (DOM_ELEMENTS.tableBody == null) { return; }
+    DOM_ELEMENTS.tableBody.querySelectorAll("tr").forEach((tr, i) => {
+        tr.draggable = true;
+
+        tr.addEventListener("dragstart", e => {
+            draggedIndex = i;
+            tr.style.opacity = "0.5";
+        });
+
+        tr.addEventListener("dragend", e => {
+            draggedIndex = null;
+            tr.style.opacity = "1";
+        });
+
+        tr.addEventListener("dragover", e => {
+            e.preventDefault(); // allow drop
+            tr.style.borderTop = "2px solid #4CAF50";
+        });
+
+        tr.addEventListener("dragleave", e => {
+            tr.style.borderTop = "";
+        });
+
+        tr.addEventListener("drop", e => {
+            e.preventDefault();
+            tr.style.borderTop = "";
+
+            if (draggedIndex === null || draggedIndex === i || editingWheel == null) return;
+
+            editingWheel.moveWheelEntry(draggedIndex, i);
+
+            rebuildTable();
+        });
+    });
+}
+
+
+/**
+ * Updates the counts at the top of the entry table
+ */
+function updateWheelEntriesCount() {
+    if (editingWheel == null || DOM_ELEMENTS.wheelEntriesCountSpan == null) { return; }
+    const totalWheelEntries = editingWheel.enabledWheelEntries.length;
+    const totalWeight = editingWheel.totalWeight;
+    DOM_ELEMENTS.wheelEntriesCountSpan.textContent = `${totalWheelEntries}, ${totalWeight}`;
+    saveState();
+}
+
+/* ---------------- Tags ---------------- */
+
+/**
+ * This updates the tags of the currently editing wheel
+ */
+function updateTagFilters() {
+    if (editingWheel == null || DOM_ELEMENTS.tagFiltersDiv == null) { return null; }
+    editingWheel.updateTags();
+
+    DOM_ELEMENTS.tagFiltersDiv.innerHTML = "";
+
+    editingWheel.tags.forEach(tag => {
+        if (editingWheel == null) { return; }
+        const div = document.createElement("div");
+        div.className = "tagToggle";
+
+        if (editingWheel.enabledTags.has(tag)) {
+            div.classList.add("active");
+        }
+
+        div.textContent = tag;
+
+        div.onclick = () => {
+            if (editingWheel == null) { return; }
+            div.classList.toggle("active");
+            editingWheel.toggleTag(div.textContent);
+            updateWheelEntriesCount();
+        };
+
+        if (DOM_ELEMENTS.tagFiltersDiv == null) { return; }
+        DOM_ELEMENTS.tagFiltersDiv.appendChild(div);
+    });
+
+    editingWheel.updateEntries(editingWheel.enabledTags);
+    saveState();
+}
+
+
+/* ---------------- Drawing ---------------- */
+
+/**
+ * Draws all of the wheels
+ */
+function update() {
+    // TODO: Make this use requestAnimationFrame()
+    let hasResult = true
+    for (const wheel of wheels) {
+        wheel.update(Date.now());
+        hasResult = hasResult && wheel.hasResult;
+    }
+    if (hasResult) {
+        showWinner()
+        for (const wheel of wheels) {
+            wheel.hasResult = false;
+        }
+    }
+}
+
+
+/**
+ * Brings up the winning entry card for the primary wheel
+ */
+function showWinner() {
+    if (DOM_ELEMENTS.winnerText == null || DOM_ELEMENTS.modal == null || editingWheel == null) { return; }
+    const winningWheelEntry = editingWheel.getWinningWheelEntry();
+    DOM_ELEMENTS.winnerText.textContent = winningWheelEntry ? winningWheelEntry.getValue() : "Nothing L Bozo";
+    DOM_ELEMENTS.modal.classList.remove("hidden");
+}
+
+
+/* ------------- Utilities ------------- */
+const cardContainer = document.getElementById("cardContainer");
+
+/**
+ * Makes a "toast" card at the top of the screen showing msg for a short duration
+ * @param {string} msg The message to be displayed 
+ * @param {number} seconds The lifespan of the card in seconds (default is 3)
+ */
+function showCard(msg, seconds = 3) {
+    if (cardContainer == null) { return; }
+    const card = document.createElement("div");
+    card.className = "toastCard";
+    card.textContent = msg;
+
+    const bar = document.createElement("div");
+    bar.className = "toastBar";
+
+    card.appendChild(bar);
+    cardContainer.appendChild(card);
+
+    bar.animate(
+        [{ width: "100%" }, { width: "0%" }],
+        { duration: seconds * 1000, easing: "linear" }
+    );
+
+    setTimeout(() => {
+        card.remove();
+    }, seconds * 1000);
+}
+
+
+/* ---------------- Persistence ---------------- */
+
+/**
+ * All the saved wheels in local cache
+ * @returns {Object} All the saved wheels in the local cache
+ */
+function getSavedWheels() {
+    return JSON.parse(localStorage.getItem("savedWheels") || "{}");
+}
+
+
+/**
+ * Sets the saved wheels in local cache to the provided JSON
+ * @param {Object} json The JSON of all saved wheels
+ */
+function setSavedWheels(json) {
+    localStorage.setItem("savedWheels", JSON.stringify(json));
+}
+
+/**
+ * Saves the current wheel to local cache
+ */
+function saveState() {
+    if (editingWheel == null) { return; }
+    localStorage.setItem(
+        "wheelState",
+        JSON.stringify(editingWheel.toJSON())
+    );
+}
+
+/**
+ * Clears the cache. Used only for debugging.
+ */
+function clearCache() {
+    localStorage.setItem("wheelState", "");
+}
+
+/**
+ * Loads the most recently used wheel
+ */
+function loadState() {
+    const saved = localStorage.getItem("wheelState");
+    if (saved && saved != "") {
+        loadWheelData(JSON.parse(saved));
+    }
+}
+
+/**
+ * Loads the given JSON data into the currently editable wheel
+ * @param {import("./wheel.js").SavedWheel} json The data to load (typically gotten from Wheel.toJSON)
+ */
+function loadWheelData(json) {
+    if (editingWheel == null) {
+        editingWheel = Wheel.fromJSON(json);
+    }
+    else {
+        editingWheel.fromJSON(json)
+    }
+    if (DOM_ELEMENTS.canvas != null && DOM_ELEMENTS.canvas instanceof HTMLCanvasElement)
+        editingWheel.setCanvas(DOM_ELEMENTS.canvas);
+    rebuildTable();
+}
+
+
+/* ---------------- Init/Main ---------------- */
+document.addEventListener("DOMContentLoaded", () => {
+    editingWheel = Wheel.baseWheel();
+    wheels.push(editingWheel)
+    // Attempt to load wheel from cache
+    loadState();
+    initializeDOMStuff(editingWheel, saveState);
+
+    // Toggle Text Mode
+    if (DOM_ELEMENTS.textModeSwitch != null)
+    DOM_ELEMENTS.textModeSwitch.onchange = () => {
+        if (DOM_ELEMENTS.textModeSwitch == null ||
+            !(DOM_ELEMENTS.textModeSwitch instanceof HTMLInputElement) ||
+            DOM_ELEMENTS.tableBody == null ||
+            DOM_ELEMENTS.tableBody.parentElement == null ||
+            DOM_ELEMENTS.textModeArea == null
+        ) { return; }
+        textModeActive = DOM_ELEMENTS.textModeSwitch.checked;
+
+        if (textModeActive) {
+            DOM_ELEMENTS.tableBody.parentElement.classList.add("hidden"); // hide table container
+            DOM_ELEMENTS.textModeArea.classList.remove("hidden");
+            populateTextModeArea();
+        } else {
+            DOM_ELEMENTS.tableBody.parentElement.classList.remove("hidden");
+            DOM_ELEMENTS.textModeArea.classList.add("hidden");
+            convertTextModeAreaToWheelEntries(); // sync back into table
+        }
+    };
+
+    // Autosave while typing
+    if (DOM_ELEMENTS.textModeArea != null)
+    DOM_ELEMENTS.textModeArea.addEventListener("input", () => {
+        convertTextModeAreaToWheelEntries();
+    });
+
+    // Shuffle button
+    if (DOM_ELEMENTS.shuffleBtn != null)
+    DOM_ELEMENTS.shuffleBtn.onclick = () => {
+        if (editingWheel == null) { return; }
+        editingWheel.shuffleEntries();
+        rebuildTable();
+        showCard("Shuffled!", 1);
+    };
+
+    setInterval(update, 10);
+});
