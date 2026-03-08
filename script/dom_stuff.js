@@ -3,7 +3,7 @@ import { Wheel } from "./wheel";
 import { setSavedWheels, getSavedWheels, showCard, loadWheelData } from "./main.js";
 
  export const DOM_ELEMENTS = {
-     canvas: document.getElementById("wheelCanvas"),
+     canvas: document.getElementById("mainWheelCanvas"),
 
     // Wheel Entries
      tableBody: document.querySelector("#wheelEntryTable tbody"),

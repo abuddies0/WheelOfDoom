@@ -106,10 +106,15 @@ export class Wheel {
         this.tags = this.getAssociatedTags();
         /** @type {Set<string>} A list of all enabled tags (initially all enabled) */
         this.enabledTags = new Set(this.tags);
+
         /** @type {HTMLCanvasElement|null} The canvas to draw on */
         this.canvas = canvas;
         /** @type {CanvasRenderingContext2D|null} */
         this.context = canvas ? canvas.getContext("2d") : null;
+        /** @type {number} The width of the wheel */
+        this.wheelWidth = 600;
+        /** @type {number} The height of the wheel */
+        this.wheelHeight = 600;
 
         /** @type {boolean} If this wheel is actively spinning */
         this.isSpinning = false;
@@ -218,7 +223,9 @@ export class Wheel {
         const colorSchemeFunction = this.colorScheme || Wheel.COLOR_SCHEMES.classic;
 
         // Buffer, center, and rotate the wheel
-        const radius = this.canvas.height * 0.5;
+        const verOffset = (this.canvas.height - this.wheelHeight) * 0.5;
+        const horOffset = (this.canvas.width - this.wheelWidth) * 0.5;
+        const radius = this.canvas.height * 0.5 - horOffset;
         this.context.save();
         this.context.translate(radius, radius);
         this.context.rotate(this.rotation);
@@ -272,6 +279,19 @@ export class Wheel {
         }
 
         this.context.restore();
+
+        // Draw pointer
+        this.context.beginPath();
+        this.context.fillStyle = "#ef4444";
+        this.context.moveTo(this.canvas.width - 30, this.canvas.height*0.5);
+        this.context.lineTo(this.canvas.width+10, this.canvas.height*0.5-20);
+        this.context.lineTo(this.canvas.width+10, this.canvas.height*0.5+20);
+        this.context.closePath();
+        this.context.fill();
+
+        this.context.strokeStyle = "black";
+        this.context.lineWidth = 1;
+        this.context.stroke();
     }
 
 
@@ -457,7 +477,6 @@ export class Wheel {
         }
         this.tags = associated;
         this.tags.delete("");
-        updateWheelEntriesCount();
     }
 
 
@@ -705,6 +724,8 @@ export class Wheel {
     setCanvas(canvas) {
         this.canvas = canvas;
         this.context = canvas ? canvas.getContext("2d") : null;
+        this.wheelWidth = this.canvas ? this.canvas.width-20 : 600;
+        this.wheelHeight = this.canvas ? this.canvas.height-20 : 600;
     }
 
     /**
