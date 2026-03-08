@@ -274,6 +274,16 @@ function updateTagFilters() {
 }
 
 
+/**
+ * Spins all necessary wheels
+ */
+function spin() {
+    clearSubWheels();
+    if (editingWheel == null) { return; }
+    editingWheel.spin(Date.now());
+}
+
+
 /* ---------------- Drawing ---------------- */
 
 /**
@@ -281,15 +291,34 @@ function updateTagFilters() {
  */
 function update() {
     // TODO: Make this use requestAnimationFrame()
-    let hasResult = true
+    let doneSpinning = true;
     for (const wheel of wheels) {
         wheel.update(Date.now());
-        hasResult = hasResult && wheel.hasResult;
+        doneSpinning = doneSpinning && wheel.isDoneSpinning();
     }
-    if (hasResult) {
-        showWinner()
+    if (doneSpinning) {
+        // Now gotta check for subwheels
+        let needsSubSpin = false;
         for (const wheel of wheels) {
-            wheel.hasResult = false;
+            if (wheel.requiresSubSpins()) {
+                needsSubSpin = true;
+                for (const subWheel of Object.values(wheel.subWheels)) {
+                    wheels.push(subWheel);
+                }
+                wheel.setNeedsSubSpins(false)
+            }
+        }
+        if (needsSubSpin) {
+            restructureWheels();
+            for (const wheel of wheels) {
+                if (!wheel.hasResult) { wheel.spin(Date.now()); }
+            }
+        }
+        else {
+            showWinner()
+            for (const wheel of wheels) {
+                wheel.resultHandled();
+            }
         }
     }
 }
@@ -300,8 +329,8 @@ function update() {
  */
 function showWinner() {
     if (DOM_ELEMENTS.winnerText == null || DOM_ELEMENTS.modal == null || editingWheel == null) { return; }
-    const winningWheelEntry = editingWheel.getWinningWheelEntry();
-    DOM_ELEMENTS.winnerText.textContent = winningWheelEntry ? winningWheelEntry.getValue() : "Nothing L Bozo";
+    const winningWheelText = editingWheel.getWinningWheelText();
+    DOM_ELEMENTS.winnerText.textContent = winningWheelText || "";
     DOM_ELEMENTS.modal.classList.remove("hidden");
 }
 
@@ -337,11 +366,83 @@ export function showCard(msg, seconds = 3) {
 }
 
 
+/* ----------------- Sub Wheels ---------------- */
+
+/**
+ * Restructures all wheels in a branch structure.
+ */
+function restructureWheels() {
+    if (DOM_ELEMENTS.wheelWrapper == null) { return; }
+    // Format is...
+    // each wheel has height of (MAX_VERT_SPACE / SUB_LEVELS)
+    // each wheel has width to fit all wheels of that sub level in a line
+    // Is this really slow and awful? Yes. But- it's funny.
+    let subLevels = 0;
+    for (const wheel of wheels) {
+        if (wheel.subLevel > subLevels) {
+            subLevels = wheel.subLevel;
+        }
+    }
+
+    const maxHeight = DOM_ELEMENTS.wheelWrapper.clientHeight;
+    const wheelHeight = maxHeight / (subLevels+1);
+
+    // Settings button (always there)
+    let html = `<button id="settingsBtn" class="settings-btn">⚙</button>\n`;
+    // Build canvases row-by-row
+    let i = 0;
+    for (let level = 0; level <= subLevels; level++) {
+        // html += `<div class="wheel-row" style="height=${wheelHeight};left=0;top=${wheelHeight*level};">\n`;
+        html += `<div class="wheel-row" style="height=${wheelHeight};">\n`;
+        for (const wheel of wheels) {
+            if (wheel.subLevel != level) {
+                continue;
+            }
+            // We now know that the sublevel is correct
+            // TODO: Fix this for large recursions
+            const canvasID = "wheel_" + i;
+            wheel.setCanvasID(canvasID);
+            html += `<canvas id="${canvasID}" class="wheel-canvas" height="${wheelHeight}" width="${wheelHeight}"></canvas>\n`;
+            i++;
+        }
+        html += `</div>`;
+    }
+    DOM_ELEMENTS.wheelWrapper.innerHTML = html;
+
+    // Now we gotta go set all the canvases
+    setTimeout(() => {
+        for (const wheel of wheels) {
+            wheel.setCanvasFromID();
+        }
+    }, 10);
+    
+}
+
+
+/**
+ * Removes all sub wheels and fixes the size
+ */
+function clearSubWheels() {
+    for (let i = 0; i < wheels.length; i++) {
+        if (wheels[i].isSubwheel()) {
+            // Remove wheel if it's a subwheel
+            wheels.splice(i, 1);
+            i--;
+        }
+        else {
+            wheels[i].subWheels = {};
+        }
+    }
+
+    restructureWheels();
+}
+
+
 /* ---------------- Persistence ---------------- */
 
 /**
  * All the saved wheels in local cache
- * @returns {Object} All the saved wheels in the local cache
+ * @returns {Record<string, import("./wheel.js").SavedWheel>} All the saved wheels in the local cache
  */
 export function getSavedWheels() {
     return JSON.parse(localStorage.getItem("savedWheels") || "{}");
@@ -389,6 +490,7 @@ function loadState() {
  * @param {import("./wheel.js").SavedWheel} json The data to load (typically gotten from Wheel.toJSON)
  */
 export function loadWheelData(json) {
+    clearSubWheels();
     if (editingWheel == null) {
         editingWheel = Wheel.fromJSON(json);
     }
@@ -407,7 +509,7 @@ document.addEventListener("DOMContentLoaded", () => {
     wheels.push(editingWheel)
     // Attempt to load wheel from cache
     loadState();
-    initializeDOMStuff(editingWheel, saveState);
+    initializeDOMStuff(editingWheel, saveState, spin);
 
     // Toggle Text Mode
     if (DOM_ELEMENTS.textModeSwitch != null)

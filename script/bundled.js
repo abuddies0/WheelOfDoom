@@ -2,6 +2,7 @@
 
  const DOM_ELEMENTS = {
      canvas: document.getElementById("mainWheelCanvas"),
+     wheelWrapper: document.getElementById("wheel-wrapper"),
 
     // Wheel Entries
      tableBody: document.querySelector("#wheelEntryTable tbody"),
@@ -58,8 +59,9 @@
  * Initializes all the DOM stuff given the primary wheel
  * @param {Wheel} editingWheel The wheel that is currently being edited
  * @param {() => void} saveState Call this to save the settings in the wheel
+ * @param {() => void} spin Call this to spin the wheel.
  */
-function initializeDOMStuff(editingWheel, saveState) {
+function initializeDOMStuff(editingWheel, saveState, spin) {
     if (DOM_ELEMENTS.cancelSaveAsBtn != null) {
         DOM_ELEMENTS.cancelSaveAsBtn.onclick = () => { if (DOM_ELEMENTS.saveModal !=  null) DOM_ELEMENTS.saveModal.classList.add("hidden")};
     }
@@ -108,11 +110,11 @@ function initializeDOMStuff(editingWheel, saveState) {
     }
 
     // Spin the wheel
-    if (DOM_ELEMENTS.canvas != null && DOM_ELEMENTS.canvas instanceof HTMLInputElement) {
-        DOM_ELEMENTS.canvas.onclick = () => { editingWheel.spin((new Date()).getTime()) };
+    if (DOM_ELEMENTS.wheelWrapper != null && DOM_ELEMENTS.wheelWrapper instanceof HTMLInputElement) {
+        DOM_ELEMENTS.wheelWrapper.onclick = () => { spin(); };
     }
     if (DOM_ELEMENTS.spinBtn != null) {
-        DOM_ELEMENTS.spinBtn.onclick = () => { editingWheel.spin((new Date()).getTime()) };
+        DOM_ELEMENTS.spinBtn.onclick = () => { spin(); };
     }
 
     // Import / Export
@@ -419,31 +421,35 @@ function initializeDOMStuff(editingWheel, saveState) {
         editingWheel.setCanvas(DOM_ELEMENTS.canvas);
     }
 }
+
 /**
-     * @typedef {Object} SavedWheelEntry A wheel entry in JSON format
-     * @property {string} value The text value of this wheel entry
-     * @property {number} weight The weight of this wheel entry
-     * @property {Array<string>} tags A list of all tags of this wheel entry
-     */
+ * @typedef {Object} SavedWheelEntry A wheel entry in JSON format
+ * @property {string} value The text value of this wheel entry
+ * @property {number} weight The weight of this wheel entry
+ * @property {Array<string>} tags A list of all tags of this wheel entry
+ */
 
-    /**
-     * @typedef {Object} WheelSettings The JSON version of all wheel settings
-     * @property {number} spinDuration The duration of the spin in milliseconds
-     * @property {number} spinStrength The strength of a spin
-     * @property {string} spinSound The key for the spinning sound in Wheel.SPIN_SOUNDS
-     * @property {string} winSound The key for the winning sound in Wheel.WIN_SOUNDS
-     * @property {string} colorScheme The key for the color scheme in Wheel.COLOR_SCHEMES
-     */
+/**
+ * @typedef {Object} WheelSettings The JSON version of all wheel settings
+ * @property {number} spinDuration The duration of the spin in milliseconds
+ * @property {number} spinStrength The strength of a spin
+ * @property {string} spinSound The key for the spinning sound in Wheel.SPIN_SOUNDS
+ * @property {string} winSound The key for the winning sound in Wheel.WIN_SOUNDS
+ * @property {string} colorScheme The key for the color scheme in Wheel.COLOR_SCHEMES
+ */
 
-    /**
-     * @typedef {Object} SavedWheel
-     * @property {string} name The name of the wheel
-     * @property {WheelSettings} settings The settings of the wheel
-     * @property {string} riggedEntry The value (text) of the rigged entry
-     * @property {number} riggedAmount The number of times the wheel should stay rigged
-     * @property {Array<SavedWheelEntry>} wheelEntries A list of all wheel entries
-     * @property {Array<string>} enabledTags A list of all enabled tags
-     */
+/**
+ * @typedef {Object} SavedWheel
+ * @property {string} name The name of the wheel
+ * @property {WheelSettings} settings The settings of the wheel
+ * @property {string} riggedEntry The value (text) of the rigged entry
+ * @property {number} riggedAmount The number of times the wheel should stay rigged
+ * @property {Array<SavedWheelEntry>} wheelEntries A list of all wheel entries
+ * @property {Array<string>} enabledTags A list of all enabled tags
+ */
+
+
+
 
 /**
  * <p> Represents an entire wheel with all of it's functionality including...</p>
@@ -534,6 +540,8 @@ class Wheel {
         this.wheelWidth = 600;
         /** @type {number} The height of the wheel */
         this.wheelHeight = 600;
+        /** @type {string} The ID of the canvas this wheel uses. "" for none. */
+        this.canvasID = "";
 
         /** @type {boolean} If this wheel is actively spinning */
         this.isSpinning = false;
@@ -574,6 +582,17 @@ class Wheel {
         this.riggedAmount = 0;
         /** @type {WheelEntry|null} The rigged wheel entry to land on. Null if not rigged. */
         this.riggedWheelEntry = null;
+
+        /** @type {boolean} True if this has subwheels left to be spun. False otherwise. */
+        this.needsSubSpin = false;
+        /** @type {Record<string, Wheel>} A list of all sub wheels associated with this wheel. */
+        this.subWheels = {};
+        /** @type {boolean} True if this is a subwheel. False otherwise. */
+        this.isSub = false;
+        /** @type {number} How many wheels are above this in the subwheel tree */
+        this.subLevel = 0;
+        /** @type {Wheel|null} The parent of this wheel */
+        this.parentWheel = null;
 
         // Initially created with EVERY TAG enabled
         this.updateEntries(this.getAssociatedTags());
@@ -642,9 +661,9 @@ class Wheel {
         const colorSchemeFunction = this.colorScheme || Wheel.COLOR_SCHEMES.classic;
 
         // Buffer, center, and rotate the wheel
-        const verOffset = (this.canvas.height - this.wheelHeight) * 0.5;
+        const pointerSize = this.canvas.height * 0.5 * 0.04;
         const horOffset = (this.canvas.width - this.wheelWidth) * 0.5;
-        const radius = this.canvas.height * 0.5 - horOffset;
+        const radius = this.canvas.height * 0.5 - pointerSize*0.75;
         this.context.save();
         this.context.translate(radius, radius);
         this.context.rotate(this.rotation);
@@ -702,9 +721,9 @@ class Wheel {
         // Draw pointer
         this.context.beginPath();
         this.context.fillStyle = "#ef4444";
-        this.context.moveTo(this.canvas.width - 30, this.canvas.height*0.5);
-        this.context.lineTo(this.canvas.width+10, this.canvas.height*0.5-20);
-        this.context.lineTo(this.canvas.width+10, this.canvas.height*0.5+20);
+        this.context.moveTo(this.canvas.width - pointerSize*3, this.canvas.height*0.5);
+        this.context.lineTo(this.canvas.width - pointerSize*0.1, this.canvas.height*0.5 - pointerSize*1.4);
+        this.context.lineTo(this.canvas.width - pointerSize*0.1, this.canvas.height*0.5 + pointerSize*1.4);
         this.context.closePath();
         this.context.fill();
 
@@ -736,6 +755,11 @@ class Wheel {
             console.log("Failed to spin because entry pulled is null.");
             return;
         }
+        // Add all necessary subwheels
+        this.subWheels = {};
+        this.addSubWheels(Array.from(this.winningWheelEntry.getValue().matchAll(/(?<=\{).+?(?=\})/g)).map(e => e[0]));
+        if (Object.keys(this.subWheels).length != 0) { this.needsSubSpin = true; }
+        // Setup rotation shenanigans
         this.rotation = this.rotation % (2 * Math.PI);
         this.targetRotation =
             (pulled["weight"] * this.sliceUnitAngle) +
@@ -744,6 +768,32 @@ class Wheel {
 
         this.spinSound.play();
         this.initialRotation = this.rotation;
+    }
+
+    static BAGEL = 0;
+
+    /**
+     * Adds all of the provided wheel names as sub wheels (if they exist)
+     * @param {Array<string>} wheelNames A list of all sub wheel names
+     */
+    addSubWheels(wheelNames) {
+        // Only add subwheels if they exist
+        const savedWheels = getSavedWheels();
+        const names = Object.keys(savedWheels);
+
+        for (const subName of wheelNames) {
+            // Skip if the wheel doesn't exist
+            if (!names.includes(subName)) {
+                console.log(`Wheel {${subName}} doesn't exist.`)
+                continue;
+            }
+            const subWheel = Wheel.fromJSON(savedWheels[subName]);
+            subWheel.isSub = true;
+            subWheel.subLevel = this.subLevel + 1;
+            subWheel.parentWheel = this;
+            this.subWheels[String(Wheel.BAGEL)] = subWheel;
+            Wheel.BAGEL++;
+        }
     }
 
 
@@ -843,10 +893,61 @@ class Wheel {
 
     /**
      * Gets the winning wheel entry
-     * @returns {WheelEntry|null} The winning wheel entry
+     * Must be called after all necessary subspins are completed
+     * @returns {string|null} The winning wheel entry
      */
-    getWinningWheelEntry() {
-        return this.winningWheelEntry;
+    getWinningWheelText() {
+        // TODO: Make this work on a key-basis, not just a loop
+        if (this.winningWheelEntry == null) { return null; }
+        let winningText = this.winningWheelEntry.getValue();
+        for (const subWheel of Object.values(this.subWheels)) {
+            if (this.winningWheelEntry == null) { return null; }
+            winningText = winningText.replace(/\{.+?\}/, subWheel.getWinningWheelText() || "");
+        }
+        return winningText;
+    }
+
+
+    /**
+     * Checks to see if the current winning entry requires sub spins
+     * @returns {boolean} True if there are unresolved sub spins. False otherwise.
+     */
+    requiresSubSpins() {
+        return this.needsSubSpin;
+    }
+
+
+    /**
+     * Changes whether this wheel still needs subwheels to be handled.
+     * @param {boolean} stillNeedsSubSpins True if all subwheels have been handled. False otherwise.
+     */
+    setNeedsSubSpins(stillNeedsSubSpins) {
+        this.needsSubSpin = stillNeedsSubSpins;
+    }
+
+
+    /**
+     * Checks to see if this wheel (and all ACTIVE subwheels) is spinning
+     * @returns {boolean} True if this wheel (and all ACTIVE subwheels) is done spinning. False otherwise
+     */
+    isDoneSpinning() {
+        if (this.hasResult == false) { return false; }
+        if (this.needsSubSpin == true) { return true; }
+        for (const subwheel of Object.values(this.subWheels)) {
+            if (subwheel.isDoneSpinning() == false) { return false; }
+        }
+        return true;
+    }
+
+    
+    /**
+     * Declares that this wheel (and all subwheels) have their results handled
+     */
+    resultHandled() {
+        this.hasResult = false;
+        for (const subWheel of Object.values(this.subWheels)) {
+            subWheel.resultHandled();
+        }
     }
 
 
@@ -1085,6 +1186,15 @@ class Wheel {
 
 
     /**
+     * Checks whether this wheel is a subwheel.
+     * @returns {boolean} True if this is a subwheel. False otherwise.
+     */
+    isSubwheel() {
+        return this.isSub;
+    }
+
+
+    /**
      * Gets all wheel entries associated with this wheel (enabled & disabled)
      * @returns {Array<WheelEntry>} All enabled & disabled wheel entries
      */
@@ -1148,6 +1258,26 @@ class Wheel {
     }
 
     /**
+     * Sets the canvas of this wheel to its saved canvas ID
+     */
+    setCanvasFromID() {
+        // If no ID, then skip
+        if (this.canvasID == null) { return; }
+        const canvas = document.getElementById(this.canvasID);
+        if (canvas == null || !(canvas instanceof HTMLCanvasElement)) { return; }
+        this.setCanvas(canvas);
+    }
+
+    /**
+     * Saves the ID of the canvas this wheel should use.
+     * Note: This does NOT use the canvas automatically. You must call setCanvasFromID.
+     * @param {string} id The ID of the canvas to be used. 
+     */
+    setCanvasID(id) {
+        this.canvasID = id;
+    }
+
+    /**
      * Sets the spin duration.
      * @param {number} duration The duration in milliseconds
      */
@@ -1195,8 +1325,10 @@ class Wheel {
             this.colorScheme = scheme;
         }
     }
-
 }
+
+
+
 
 
 /**
@@ -1595,6 +1727,16 @@ function updateTagFilters() {
 }
 
 
+/**
+ * Spins all necessary wheels
+ */
+function spin() {
+    clearSubWheels();
+    if (editingWheel == null) { return; }
+    editingWheel.spin(Date.now());
+}
+
+
 /* ---------------- Drawing ---------------- */
 
 /**
@@ -1602,15 +1744,34 @@ function updateTagFilters() {
  */
 function update() {
     // TODO: Make this use requestAnimationFrame()
-    let hasResult = true
+    let doneSpinning = true;
     for (const wheel of wheels) {
         wheel.update(Date.now());
-        hasResult = hasResult && wheel.hasResult;
+        doneSpinning = doneSpinning && wheel.isDoneSpinning();
     }
-    if (hasResult) {
-        showWinner()
+    if (doneSpinning) {
+        // Now gotta check for subwheels
+        let needsSubSpin = false;
         for (const wheel of wheels) {
-            wheel.hasResult = false;
+            if (wheel.requiresSubSpins()) {
+                needsSubSpin = true;
+                for (const subWheel of Object.values(wheel.subWheels)) {
+                    wheels.push(subWheel);
+                }
+                wheel.setNeedsSubSpins(false)
+            }
+        }
+        if (needsSubSpin) {
+            restructureWheels();
+            for (const wheel of wheels) {
+                if (!wheel.hasResult) { wheel.spin(Date.now()); }
+            }
+        }
+        else {
+            showWinner()
+            for (const wheel of wheels) {
+                wheel.resultHandled();
+            }
         }
     }
 }
@@ -1621,8 +1782,8 @@ function update() {
  */
 function showWinner() {
     if (DOM_ELEMENTS.winnerText == null || DOM_ELEMENTS.modal == null || editingWheel == null) { return; }
-    const winningWheelEntry = editingWheel.getWinningWheelEntry();
-    DOM_ELEMENTS.winnerText.textContent = winningWheelEntry ? winningWheelEntry.getValue() : "Nothing L Bozo";
+    const winningWheelText = editingWheel.getWinningWheelText();
+    DOM_ELEMENTS.winnerText.textContent = winningWheelText || "";
     DOM_ELEMENTS.modal.classList.remove("hidden");
 }
 
@@ -1658,11 +1819,83 @@ function showCard(msg, seconds = 3) {
 }
 
 
+/* ----------------- Sub Wheels ---------------- */
+
+/**
+ * Restructures all wheels in a branch structure.
+ */
+function restructureWheels() {
+    if (DOM_ELEMENTS.wheelWrapper == null) { return; }
+    // Format is...
+    // each wheel has height of (MAX_VERT_SPACE / SUB_LEVELS)
+    // each wheel has width to fit all wheels of that sub level in a line
+    // Is this really slow and awful? Yes. But- it's funny.
+    let subLevels = 0;
+    for (const wheel of wheels) {
+        if (wheel.subLevel > subLevels) {
+            subLevels = wheel.subLevel;
+        }
+    }
+
+    const maxHeight = DOM_ELEMENTS.wheelWrapper.clientHeight;
+    const wheelHeight = maxHeight / (subLevels+1);
+
+    // Settings button (always there)
+    let html = `<button id="settingsBtn" class="settings-btn">⚙</button>\n`;
+    // Build canvases row-by-row
+    let i = 0;
+    for (let level = 0; level <= subLevels; level++) {
+        // html += `<div class="wheel-row" style="height=${wheelHeight};left=0;top=${wheelHeight*level};">\n`;
+        html += `<div class="wheel-row" style="height=${wheelHeight};">\n`;
+        for (const wheel of wheels) {
+            if (wheel.subLevel != level) {
+                continue;
+            }
+            // We now know that the sublevel is correct
+            // TODO: Fix this for large recursions
+            const canvasID = "wheel_" + i;
+            wheel.setCanvasID(canvasID);
+            html += `<canvas id="${canvasID}" class="wheel-canvas" height="${wheelHeight}" width="${wheelHeight}"></canvas>\n`;
+            i++;
+        }
+        html += `</div>`;
+    }
+    DOM_ELEMENTS.wheelWrapper.innerHTML = html;
+
+    // Now we gotta go set all the canvases
+    setTimeout(() => {
+        for (const wheel of wheels) {
+            wheel.setCanvasFromID();
+        }
+    }, 10);
+    
+}
+
+
+/**
+ * Removes all sub wheels and fixes the size
+ */
+function clearSubWheels() {
+    for (let i = 0; i < wheels.length; i++) {
+        if (wheels[i].isSubwheel()) {
+            // Remove wheel if it's a subwheel
+            wheels.splice(i, 1);
+            i--;
+        }
+        else {
+            wheels[i].subWheels = {};
+        }
+    }
+
+    restructureWheels();
+}
+
+
 /* ---------------- Persistence ---------------- */
 
 /**
  * All the saved wheels in local cache
- * @returns {Object} All the saved wheels in the local cache
+ * @returns {Record<string, import("./wheel.js").SavedWheel>} All the saved wheels in the local cache
  */
 function getSavedWheels() {
     return JSON.parse(localStorage.getItem("savedWheels") || "{}");
@@ -1710,6 +1943,7 @@ function loadState() {
  * @param {import("./wheel.js").SavedWheel} json The data to load (typically gotten from Wheel.toJSON)
  */
 function loadWheelData(json) {
+    clearSubWheels();
     if (editingWheel == null) {
         editingWheel = Wheel.fromJSON(json);
     }
@@ -1728,7 +1962,7 @@ document.addEventListener("DOMContentLoaded", () => {
     wheels.push(editingWheel)
     // Attempt to load wheel from cache
     loadState();
-    initializeDOMStuff(editingWheel, saveState);
+    initializeDOMStuff(editingWheel, saveState, spin);
 
     // Toggle Text Mode
     if (DOM_ELEMENTS.textModeSwitch != null)

@@ -4,6 +4,7 @@ import { setSavedWheels, getSavedWheels, showCard, loadWheelData } from "./main.
 
  export const DOM_ELEMENTS = {
      canvas: document.getElementById("mainWheelCanvas"),
+     wheelWrapper: document.getElementById("wheel-wrapper"),
 
     // Wheel Entries
      tableBody: document.querySelector("#wheelEntryTable tbody"),
@@ -60,8 +61,9 @@ import { setSavedWheels, getSavedWheels, showCard, loadWheelData } from "./main.
  * Initializes all the DOM stuff given the primary wheel
  * @param {Wheel} editingWheel The wheel that is currently being edited
  * @param {() => void} saveState Call this to save the settings in the wheel
+ * @param {() => void} spin Call this to spin the wheel.
  */
-export function initializeDOMStuff(editingWheel, saveState) {
+export function initializeDOMStuff(editingWheel, saveState, spin) {
     if (DOM_ELEMENTS.cancelSaveAsBtn != null) {
         DOM_ELEMENTS.cancelSaveAsBtn.onclick = () => { if (DOM_ELEMENTS.saveModal !=  null) DOM_ELEMENTS.saveModal.classList.add("hidden")};
     }
@@ -110,11 +112,11 @@ export function initializeDOMStuff(editingWheel, saveState) {
     }
 
     // Spin the wheel
-    if (DOM_ELEMENTS.canvas != null && DOM_ELEMENTS.canvas instanceof HTMLInputElement) {
-        DOM_ELEMENTS.canvas.onclick = () => { editingWheel.spin((new Date()).getTime()) };
+    if (DOM_ELEMENTS.wheelWrapper != null && DOM_ELEMENTS.wheelWrapper instanceof HTMLInputElement) {
+        DOM_ELEMENTS.wheelWrapper.onclick = () => { spin(); };
     }
     if (DOM_ELEMENTS.spinBtn != null) {
-        DOM_ELEMENTS.spinBtn.onclick = () => { editingWheel.spin((new Date()).getTime()) };
+        DOM_ELEMENTS.spinBtn.onclick = () => { spin(); };
     }
 
     // Import / Export
