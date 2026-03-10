@@ -290,6 +290,8 @@ function spin() {
  * Draws all of the wheels
  */
 function update() {
+    const startTime = performance.now();
+
     // TODO: Make this use requestAnimationFrame()
     let doneSpinning = true;
     for (const wheel of wheels) {
@@ -320,6 +322,10 @@ function update() {
                 wheel.resultHandled();
             }
         }
+    }
+
+    if (DOM_ELEMENTS.fpsCounter != null) {
+        DOM_ELEMENTS.fpsCounter.textContent = String(Math.min(1000, Math.round(1000.0 / (performance.now() - startTime))));
     }
 }
 
@@ -413,6 +419,7 @@ function restructureWheels() {
     setTimeout(() => {
         for (const wheel of wheels) {
             wheel.setCanvasFromID();
+            wheel.drawSegments();
         }
     }, 10);
     
@@ -423,6 +430,10 @@ function restructureWheels() {
  * Removes all sub wheels and fixes the size
  */
 function clearSubWheels() {
+    if (wheels.length == 1) {
+        return;
+    }
+
     for (let i = 0; i < wheels.length; i++) {
         if (wheels[i].isSubwheel()) {
             // Remove wheel if it's a subwheel

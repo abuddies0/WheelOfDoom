@@ -53,7 +53,10 @@ import { setSavedWheels, getSavedWheels, showCard, loadWheelData } from "./main.
      spinDurationNumber: document.getElementById("spinDurationNumber"),
      colorSchemeSelect: document.getElementById("colorSchemeSelect"),
      spinSoundSelect: document.getElementById("spinSoundSelect"),
-     victorySoundSelect: document.getElementById("victorySoundSelect")
+     victorySoundSelect: document.getElementById("victorySoundSelect"),
+
+     // Debug Stuff
+     fpsCounter: document.getElementById("fps")
 };
 
 

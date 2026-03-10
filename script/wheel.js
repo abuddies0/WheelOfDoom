@@ -112,14 +112,16 @@ export class Wheel {
         /** @type {Set<string>} A list of all enabled tags (initially all enabled) */
         this.enabledTags = new Set(this.tags);
 
-        /** @type {HTMLCanvasElement|null} The canvas to draw on */
+        /** @type {HTMLCanvasElement|null} The canvas to draw on. 2.5% buffer on either side of wheel */
         this.canvas = canvas;
         /** @type {CanvasRenderingContext2D|null} */
         this.context = canvas ? canvas.getContext("2d") : null;
-        /** @type {number} The width of the wheel */
-        this.wheelWidth = 600;
-        /** @type {number} The height of the wheel */
-        this.wheelHeight = 600;
+        /** @type {HTMLCanvasElement} A buffer to render the wheel on to then be rotated later */
+        this.canvasBuffer = document.createElement("canvas");
+        /** @type {CanvasRenderingContext2D|null} The context for the buffer to be drawn on */
+        this.contextBuffer = this.canvasBuffer.getContext("2d");
+        /** @type {boolean} True if the wheel canvas has been buffered. False otherwise. */
+        this.buffered = false;
         /** @type {string} The ID of the canvas this wheel uses. "" for none. */
         this.canvasID = "";
 
@@ -227,89 +229,120 @@ export class Wheel {
 
 
     /**
-     * Draws the wheel to the canvas provided
-     * TODO: Change this to use SVG?
+     * This should only be called when the wheel needs to first be drawn.
      */
-    draw() {
-        // Do not spin when there is no canvas
-        if (this.canvas == null || this.context == null) return;
+    drawSegments() {
+        this.buffered = true;
+        if (this.canvas == null || this.contextBuffer == null) return;
+        this.canvasBuffer.width = this.canvas.width;
+        this.canvasBuffer.height = this.canvas.height;
         // Do not render if there are no wheel entries
         if (this.enabledWheelEntries.length == 0) return;
         // Clear the canvas
-        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.contextBuffer.clearRect(0, 0, this.canvas.width, this.canvas.height);
         // Choose the correct color scheme
         const colorSchemeFunction = this.colorScheme || Wheel.COLOR_SCHEMES.classic;
 
         // Buffer, center, and rotate the wheel
-        const pointerSize = this.canvas.height * 0.5 * 0.04;
-        const horOffset = (this.canvas.width - this.wheelWidth) * 0.5;
-        const radius = this.canvas.height * 0.5 - pointerSize*0.75;
-        this.context.save();
-        this.context.translate(radius, radius);
-        this.context.rotate(this.rotation);
+        const horOffset = this.canvas.width * 0.025;    // 2.5% padding
+        const verOffset = this.canvas.height* 0.025;    // 2.5% padding
+        const radius = this.canvas.height * 0.475;      // 95% of space is wheel
+        this.contextBuffer.save();
+        this.contextBuffer.translate(this.canvas.width*0.5, this.canvas.height*0.5);   // Center
+        // No rotation (0 degrees)
 
         // Start drawing slices
         let startAngle = Math.PI * 2;
+        const maxWidth = radius * 0.55;
         for (let i = 0; i < this.enabledWheelEntries.length; i++) {
             const wheelEntry = this.enabledWheelEntries[i];
             const text = wheelEntry.getValue();
 
-            this.context.beginPath();
-            this.context.moveTo(0, 0);
-            this.context.arc(0, 0, radius, startAngle-this.sliceAngles[i], startAngle);
-            this.context.fillStyle = colorSchemeFunction(i, this.enabledWheelEntries.length);
-            this.context.fill();
+            this.contextBuffer.beginPath();
+            this.contextBuffer.moveTo(0, 0);
+            this.contextBuffer.arc(0, 0, radius, startAngle-this.sliceAngles[i], startAngle);
+            this.contextBuffer.fillStyle = colorSchemeFunction(i, this.enabledWheelEntries.length);
+            this.contextBuffer.fill();
 
             // TODO: Make this NOT rotate the wheel every single time
             // Rotate the wheel to center text
-            this.context.save();
-            this.context.rotate(startAngle - (this.sliceAngles[i])*0.5);
+            this.contextBuffer.save();
+            this.contextBuffer.rotate(startAngle - (this.sliceAngles[i])*0.5);
 
             // TODO: Mathematically determine font
-            let size = 22;
-            this.context.font = `${size}px system-ui`;
-            let textMeasure = this.context.measureText(text);
-            const arcLength = this.sliceAngles[i] * radius;
-            while ((textMeasure.width > radius*0.55 || textMeasure.fontBoundingBoxAscent > arcLength) && size > 6) {
-                size--;
-                this.context.font = `${size}px system-ui`;
-                textMeasure = this.context.measureText(text);
-            }
+            this.contextBuffer.font = "100px system-ui";
+            const widthScale = this.contextBuffer.measureText(text).width / 100;
+            const arcLength = radius * this.sliceAngles[i];
 
-            this.context.fillStyle = "#111";
-            if (size > 18) {
-                this.context.textAlign = "center";
-                this.context.textBaseline = "middle";
-                this.context.translate(radius*0.6,0);
-            } 
-            // Force aligns at the edge when the wheel entry is small
-            else {
-                this.context.textAlign = "right";
-                this.context.textBaseline = "middle";
-                this.context.translate(radius*0.99,0);
-            }
-        
-            this.context.fillText(text,0,0);
+            const sizeFromWidth = maxWidth / widthScale;
+            const sizeFromArc = arcLength; // height ≈ fontSize
 
-            this.context.restore();
+            this.contextBuffer.font = `${Math.max(6, Math.min(sizeFromWidth, sizeFromArc, 22))}px system-ui`;
+            // let size = 22;
+            // this.contextBuffer.font = `${size}px system-ui`;
+            // let textMeasure = this.contextBuffer.measureText(text);
+            // const arcLength = this.sliceAngles[i] * radius;
+            // while ((textMeasure.width > radius*0.55 || textMeasure.fontBoundingBoxAscent > arcLength) && size > 6) {
+            //     size--;
+            //     this.contextBuffer.font = `${size}px system-ui`;
+            //     textMeasure = this.contextBuffer.measureText(text);
+            // }
+
+            this.contextBuffer.fillStyle = "#111";
+            // if (size > 18) {
+            //     this.contextBuffer.textAlign = "center";
+            //     this.contextBuffer.textBaseline = "middle";
+            //     this.contextBuffer.translate(radius*0.6,0);
+            // } 
+            // // Force aligns at the edge when the wheel entry is small
+            // else {
+            //    this.contextBuffer.textAlign = "right";
+            //    this.contextBuffer.textBaseline = "middle";
+            //    this.contextBuffer.translate(radius*0.99,0);
+            // }
+            this.contextBuffer.textAlign = "right";
+            this.contextBuffer.textBaseline = "middle";
+            this.contextBuffer.translate(radius*0.99,0);
+            this.contextBuffer.fillText(text,0,0);
+
+            this.contextBuffer.restore();
 
             startAngle -= this.sliceAngles[i];
         }
 
+        this.contextBuffer.restore();
+    }
+
+
+    /**
+     * Draws the wheel to the canvas provided
+     * TODO: Change this to WebGL for speed reasons
+     */
+    draw() {
+        // Do not spin when there is no canvas
+        if (this.canvas == null || this.context == null) return;
+        // Rotate canvas
+        const radius = 0.5*this.canvas.width;
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.context.save();
+        this.context.translate(radius, radius);
+        this.context.rotate(this.rotation);
+        this.context.drawImage(this.canvasBuffer, -radius, -radius);
         this.context.restore();
 
         // Draw pointer
-        this.context.beginPath();
-        this.context.fillStyle = "#ef4444";
-        this.context.moveTo(this.canvas.width - pointerSize*3, this.canvas.height*0.5);
-        this.context.lineTo(this.canvas.width - pointerSize*0.1, this.canvas.height*0.5 - pointerSize*1.4);
-        this.context.lineTo(this.canvas.width - pointerSize*0.1, this.canvas.height*0.5 + pointerSize*1.4);
-        this.context.closePath();
-        this.context.fill();
+        // const pointerSize = this.canvas.height * 0.5 * 0.04;
+        // this.context.beginPath();
+        // this.context.fillStyle = "#ef4444";
+        // this.context.moveTo(this.canvas.width - pointerSize*3, this.canvas.height*0.5);
+        // this.context.lineTo(this.canvas.width - pointerSize*0.1, this.canvas.height*0.5 - pointerSize*1.4);
+        // this.context.lineTo(this.canvas.width - pointerSize*0.1, this.canvas.height*0.5 + pointerSize*1.4);
+        // this.context.closePath();
+        // this.context.fill();
 
-        this.context.strokeStyle = "black";
-        this.context.lineWidth = 1;
-        this.context.stroke();
+        // this.context.strokeStyle = "black";
+        // this.context.lineWidth = 1;
+        // this.context.stroke();
     }
 
 
@@ -562,6 +595,8 @@ export class Wheel {
             this.sliceAngles.push(wheelEntry.getWeight() * this.sliceUnitAngle);
         }
         this.tags.delete("");
+
+        this.drawSegments();
     }
 
 
