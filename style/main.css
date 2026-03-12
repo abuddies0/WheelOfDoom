@@ -359,6 +359,12 @@ canvas {
     min-width: 0;
 }
 
+#wheel-connections {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
 .settings-btn {
     position: absolute;
     top: 10px;

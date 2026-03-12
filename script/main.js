@@ -395,6 +395,7 @@ function restructureWheels() {
 
     // Settings button (always there)
     let html = `<button id="settingsBtn" class="settings-btn">⚙</button>\n`;
+    html += `<canvas id="wheel-connections" width="650" height="650"></canvas>\n`;
     // Build canvases row-by-row
     let i = 0;
     for (let level = 0; level <= subLevels; level++) {
@@ -420,6 +421,37 @@ function restructureWheels() {
         for (const wheel of wheels) {
             wheel.setCanvasFromID();
             wheel.drawSegments();
+        }
+        // Next up, draw a bunch of lines between them all
+        const wheelConnections = document.getElementById("wheel-connections");
+        if (wheelConnections == null || !(wheelConnections instanceof HTMLCanvasElement)) { return; }
+        const connectionsContext = wheelConnections.getContext("2d");
+        if (connectionsContext == null || !(connectionsContext instanceof CanvasRenderingContext2D)) { return; }
+        const ox = wheelConnections.getBoundingClientRect().left;
+        const oy = wheelConnections.getBoundingClientRect().top;
+        let parentRect, px, py;
+        let childRect, cx, cy;
+        connectionsContext.clearRect(0, 0, wheelConnections.width, wheelConnections.height);
+        for (const wheel of wheels) {
+            if (wheel.canvas == null) { continue; }
+            parentRect = wheel.canvas.getBoundingClientRect();
+            px = parentRect.left + parentRect.width * 0.5;
+            py = parentRect.top + parentRect.height * 0.975;
+            for (const subWheel of Object.values(wheel.subWheels)) {
+                if (subWheel.canvas == null) { continue; }
+                childRect = subWheel.canvas.getBoundingClientRect();
+                cx = childRect.left + childRect.width * 0.5;
+                cy = childRect.top + childRect.height * 0.025;
+                connectionsContext.save();
+                connectionsContext.beginPath();
+                console.log(`Drawn line from (${px - ox}, ${py - oy}) to (${cx - ox}, ${cy - oy})`)
+                connectionsContext.moveTo(px - ox, py - oy);
+                connectionsContext.moveTo(cx - ox, cy - oy);
+                connectionsContext.lineWidth = 3;
+                connectionsContext.strokeStyle = "red";
+                connectionsContext.stroke();
+                connectionsContext.restore();
+            }
         }
     }, 10);
     
