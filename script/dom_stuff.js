@@ -65,8 +65,9 @@ import { setSavedWheels, getSavedWheels, showCard, loadWheelData } from "./main.
  * @param {Wheel} editingWheel The wheel that is currently being edited
  * @param {() => void} saveState Call this to save the settings in the wheel
  * @param {() => void} spin Call this to spin the wheel.
+ * @param {() => void} cacheSavedWheels Call this to cache all saved wheels.
  */
-export function initializeDOMStuff(editingWheel, saveState, spin) {
+export function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
     if (DOM_ELEMENTS.cancelSaveAsBtn != null) {
         DOM_ELEMENTS.cancelSaveAsBtn.onclick = () => { if (DOM_ELEMENTS.saveModal !=  null) DOM_ELEMENTS.saveModal.classList.add("hidden")};
     }
@@ -192,6 +193,7 @@ export function initializeDOMStuff(editingWheel, saveState, spin) {
         DOM_ELEMENTS.saveNameInput.focus();
 
         saveState();
+        cacheSavedWheels();
     }
 
     if (DOM_ELEMENTS.confirmSaveAsBtn != null) {
@@ -235,13 +237,12 @@ export function initializeDOMStuff(editingWheel, saveState, spin) {
             }
 
             const wheels = getSavedWheels();
-            // @ts-ignore
             wheels[editingWheel.getName()] = editingWheel.toJSON();
 
             showCard(`Saved '${editingWheel.getName()}'`, 2)
 
-            // @ts-ignore
             setSavedWheels(wheels);
+            cacheSavedWheels();
         };
     }
 
@@ -294,9 +295,7 @@ export function initializeDOMStuff(editingWheel, saveState, spin) {
                 if (!confirm(`Delete "${name}"?`)) return;
 
                 const wheels = getSavedWheels();
-                // @ts-ignore
                 delete wheels[name];
-                // @ts-ignore
                 setSavedWheels(wheels);
 
                 rebuildLoadMenu();
@@ -314,13 +313,11 @@ export function initializeDOMStuff(editingWheel, saveState, spin) {
     function loadWheel(name) {
         if (editingWheel == null) { return; }
         const wheels = getSavedWheels();
-        // @ts-ignore
         if (!wheels[name]) {
             showCard(`Wheel "${name}" not found!`, 3);
             return;
         }
 
-        // @ts-ignore
         loadWheelData(wheels[name])
         showCard(`Wheel "${name}" loaded!`, 3);
     }

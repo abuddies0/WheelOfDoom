@@ -63,8 +63,9 @@
  * @param {Wheel} editingWheel The wheel that is currently being edited
  * @param {() => void} saveState Call this to save the settings in the wheel
  * @param {() => void} spin Call this to spin the wheel.
+ * @param {() => void} cacheSavedWheels Call this to cache all saved wheels.
  */
-function initializeDOMStuff(editingWheel, saveState, spin) {
+function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
     if (DOM_ELEMENTS.cancelSaveAsBtn != null) {
         DOM_ELEMENTS.cancelSaveAsBtn.onclick = () => { if (DOM_ELEMENTS.saveModal !=  null) DOM_ELEMENTS.saveModal.classList.add("hidden")};
     }
@@ -190,6 +191,7 @@ function initializeDOMStuff(editingWheel, saveState, spin) {
         DOM_ELEMENTS.saveNameInput.focus();
 
         saveState();
+        cacheSavedWheels();
     }
 
     if (DOM_ELEMENTS.confirmSaveAsBtn != null) {
@@ -233,13 +235,12 @@ function initializeDOMStuff(editingWheel, saveState, spin) {
             }
 
             const wheels = getSavedWheels();
-            // @ts-ignore
             wheels[editingWheel.getName()] = editingWheel.toJSON();
 
             showCard(`Saved '${editingWheel.getName()}'`, 2)
 
-            // @ts-ignore
             setSavedWheels(wheels);
+            cacheSavedWheels();
         };
     }
 
@@ -292,9 +293,7 @@ function initializeDOMStuff(editingWheel, saveState, spin) {
                 if (!confirm(`Delete "${name}"?`)) return;
 
                 const wheels = getSavedWheels();
-                // @ts-ignore
                 delete wheels[name];
-                // @ts-ignore
                 setSavedWheels(wheels);
 
                 rebuildLoadMenu();
@@ -312,13 +311,11 @@ function initializeDOMStuff(editingWheel, saveState, spin) {
     function loadWheel(name) {
         if (editingWheel == null) { return; }
         const wheels = getSavedWheels();
-        // @ts-ignore
         if (!wheels[name]) {
             showCard(`Wheel "${name}" not found!`, 3);
             return;
         }
 
-        // @ts-ignore
         loadWheelData(wheels[name])
         showCard(`Wheel "${name}" loaded!`, 3);
     }
@@ -500,6 +497,9 @@ class Wheel {
         "silence": new Audio("asset/sound/silence.mp3")
     };
 
+    /** @type {Record<string, Wheel>} A pointer to a collection of cached wheels (for speed ups) */
+    static CACHED_WHEELS = {};
+
     /**
      * Initializes all necessary static variables
      */
@@ -620,9 +620,15 @@ class Wheel {
     /**
      * Creates a new wheel exclusively from JSON
      * @param {SavedWheel} json The JSON obtained from wheel.toJSON()
+     * @param {boolean} useCache True if the program should first check the cache for wheels matching this name.
      * @return {Wheel} The wheel that contains that json data
      */
-    static fromJSON(json) {
+    static fromJSON(json, useCache=false) {
+        // Check cache first
+        if (useCache && Wheel.CACHED_WHEELS.hasOwnProperty(json.name)) {
+            
+        }
+        // Ignore cache and make new wheel
         const newWheel = Wheel.baseWheel();
         newWheel.fromJSON(json);
         return newWheel;
@@ -631,7 +637,6 @@ class Wheel {
 
     /**
      * Overwrites all the data of this current wheel.
-     * 
      * @param {SavedWheel} json The json to overwrite the wheel with.
      */
     fromJSON(json) {
@@ -1532,12 +1537,30 @@ class WheelEntry {
 
 /** @type {boolean} True if editing entries through text */
 let textModeActive = false;
-
+/** @type {Record<string, Wheel>} A dictionary of all cached (saved) wheels. Is refreshed upon save. */
+let cachedWheels = {};
 /** @type {Array<Wheel>} All the wheels on screen. The first wheel in the list is the one being edited on the left */
 let wheels = new Array();
 /** @type {Wheel|null} The wheel that is currently being edited. */
 let editingWheel = null;
 
+
+
+
+/* ---------------- Wheel Caching ---------------- */
+
+/**
+ * Goes through the saved wheels and caches them all.
+ * The expectation is that this is called asyncronously.
+ */
+async function cacheSavedWheels() {
+    cachedWheels = {};
+    const savedJSONs = getSavedWheels();
+    for (const [wheelName, json] of Object.entries(savedJSONs)) {
+        cachedWheels[wheelName] = Wheel.fromJSON(json, false);
+    }
+    Wheel.CACHED_WHEELS = cachedWheels;
+}
 
 
 
@@ -1944,6 +1967,7 @@ function restructureWheels() {
     DOM_ELEMENTS.wheelWrapper.innerHTML = html;
 
     // Now we gotta go set all the canvases
+    // TODO: Make this actually wait until the DOM elements are loaded, then just do it instantly
     setTimeout(() => {
         for (const wheel of wheels) {
             wheel.setCanvasFromID();
@@ -1956,8 +1980,9 @@ function restructureWheels() {
         if (connectionsContext == null || !(connectionsContext instanceof CanvasRenderingContext2D)) { return; }
         const ox = wheelConnections.getBoundingClientRect().left;
         const oy = wheelConnections.getBoundingClientRect().top;
-        let parentRect, px, py;
-        let childRect, cx, cy;
+        let parentRect, px, py, pr;
+        let childRect, cx, cy, cr;
+        let d, vx, vy;
         let canvas, subCanvas;
         connectionsContext.clearRect(0, 0, wheelConnections.width, wheelConnections.height);
         for (const wheel of wheels) {
@@ -1965,19 +1990,28 @@ function restructureWheels() {
             if (canvas == null) { continue; }
             parentRect = canvas.getBoundingClientRect();
             px = parentRect.left + parentRect.width * 0.5;
-            py = parentRect.top + parentRect.height * 0.975;
+            py = parentRect.top + parentRect.height * 0.5;
+            pr = parentRect.width * 0.475;
             for (const subWheel of Object.values(wheel.subWheels)) {
                 subCanvas = subWheel.getCanvas();
                 if (subCanvas == null) { continue; }
                 childRect = subCanvas.getBoundingClientRect();
                 cx = childRect.left + childRect.width * 0.5;
-                cy = childRect.top + childRect.height * 0.025;
+                cy = childRect.top + childRect.height * 0.5;
+                cr = childRect.width * 0.475
+                // Math time to find the shortest path between them.
+                // Find normalized vector between them
+                vx = cx - px;
+                vy = cy - py;
+                d = Math.sqrt(vx*vx + vy*vy);
+                vx = vx / d;
+                vy = vy / d;
+                // Use the normal to find the shortest path
                 connectionsContext.save();
                 connectionsContext.beginPath();
-                console.log(`Drawn line from (${px - ox}, ${py - oy}) to (${cx - ox}, ${cy - oy})`)
-                connectionsContext.moveTo(px - ox, py - oy);
-                connectionsContext.moveTo(cx - ox, cy - oy);
-                connectionsContext.lineWidth = 3;
+                connectionsContext.moveTo(px+vx*pr - ox, py+vy*pr - oy);
+                connectionsContext.lineTo(cx-vx*cr - ox, cy-vy*cr - oy);
+                connectionsContext.lineWidth = 0.5;
                 connectionsContext.strokeStyle = "red";
                 connectionsContext.stroke();
                 connectionsContext.restore();
@@ -2065,7 +2099,7 @@ function loadState() {
 function loadWheelData(json) {
     clearSubWheels();
     if (editingWheel == null) {
-        editingWheel = Wheel.fromJSON(json);
+        editingWheel = Wheel.fromJSON(json, true);
     }
     else {
         editingWheel.fromJSON(json)
@@ -2082,7 +2116,7 @@ document.addEventListener("DOMContentLoaded", () => {
     wheels.push(editingWheel)
     // Attempt to load wheel from cache
     loadState();
-    initializeDOMStuff(editingWheel, saveState, spin);
+    initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels);
 
     // Toggle Text Mode
     if (DOM_ELEMENTS.textModeSwitch != null)

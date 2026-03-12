@@ -5,12 +5,30 @@ import { initializeDOMStuff, DOM_ELEMENTS } from './dom_stuff.js'
 
 /** @type {boolean} True if editing entries through text */
 let textModeActive = false;
-
+/** @type {Record<string, Wheel>} A dictionary of all cached (saved) wheels. Is refreshed upon save. */
+let cachedWheels = {};
 /** @type {Array<Wheel>} All the wheels on screen. The first wheel in the list is the one being edited on the left */
 let wheels = new Array();
 /** @type {Wheel|null} The wheel that is currently being edited. */
 let editingWheel = null;
 
+
+
+
+/* ---------------- Wheel Caching ---------------- */
+
+/**
+ * Goes through the saved wheels and caches them all.
+ * The expectation is that this is called asyncronously.
+ */
+async function cacheSavedWheels() {
+    cachedWheels = {};
+    const savedJSONs = getSavedWheels();
+    for (const [wheelName, json] of Object.entries(savedJSONs)) {
+        cachedWheels[wheelName] = Wheel.fromJSON(json, false);
+    }
+    Wheel.CACHED_WHEELS = cachedWheels;
+}
 
 
 
@@ -417,6 +435,7 @@ function restructureWheels() {
     DOM_ELEMENTS.wheelWrapper.innerHTML = html;
 
     // Now we gotta go set all the canvases
+    // TODO: Make this actually wait until the DOM elements are loaded, then just do it instantly
     setTimeout(() => {
         for (const wheel of wheels) {
             wheel.setCanvasFromID();
@@ -429,8 +448,9 @@ function restructureWheels() {
         if (connectionsContext == null || !(connectionsContext instanceof CanvasRenderingContext2D)) { return; }
         const ox = wheelConnections.getBoundingClientRect().left;
         const oy = wheelConnections.getBoundingClientRect().top;
-        let parentRect, px, py;
-        let childRect, cx, cy;
+        let parentRect, px, py, pr;
+        let childRect, cx, cy, cr;
+        let d, vx, vy;
         let canvas, subCanvas;
         connectionsContext.clearRect(0, 0, wheelConnections.width, wheelConnections.height);
         for (const wheel of wheels) {
@@ -438,19 +458,28 @@ function restructureWheels() {
             if (canvas == null) { continue; }
             parentRect = canvas.getBoundingClientRect();
             px = parentRect.left + parentRect.width * 0.5;
-            py = parentRect.top + parentRect.height * 0.975;
+            py = parentRect.top + parentRect.height * 0.5;
+            pr = parentRect.width * 0.475;
             for (const subWheel of Object.values(wheel.subWheels)) {
                 subCanvas = subWheel.getCanvas();
                 if (subCanvas == null) { continue; }
                 childRect = subCanvas.getBoundingClientRect();
                 cx = childRect.left + childRect.width * 0.5;
-                cy = childRect.top + childRect.height * 0.025;
+                cy = childRect.top + childRect.height * 0.5;
+                cr = childRect.width * 0.475
+                // Math time to find the shortest path between them.
+                // Find normalized vector between them
+                vx = cx - px;
+                vy = cy - py;
+                d = Math.sqrt(vx*vx + vy*vy);
+                vx = vx / d;
+                vy = vy / d;
+                // Use the normal to find the shortest path
                 connectionsContext.save();
                 connectionsContext.beginPath();
-                console.log(`Drawn line from (${px - ox}, ${py - oy}) to (${cx - ox}, ${cy - oy})`)
-                connectionsContext.moveTo(px - ox, py - oy);
-                connectionsContext.moveTo(cx - ox, cy - oy);
-                connectionsContext.lineWidth = 3;
+                connectionsContext.moveTo(px+vx*pr - ox, py+vy*pr - oy);
+                connectionsContext.lineTo(cx-vx*cr - ox, cy-vy*cr - oy);
+                connectionsContext.lineWidth = 0.5;
                 connectionsContext.strokeStyle = "red";
                 connectionsContext.stroke();
                 connectionsContext.restore();
@@ -538,7 +567,7 @@ function loadState() {
 export function loadWheelData(json) {
     clearSubWheels();
     if (editingWheel == null) {
-        editingWheel = Wheel.fromJSON(json);
+        editingWheel = Wheel.fromJSON(json, true);
     }
     else {
         editingWheel.fromJSON(json)
@@ -555,7 +584,7 @@ document.addEventListener("DOMContentLoaded", () => {
     wheels.push(editingWheel)
     // Attempt to load wheel from cache
     loadState();
-    initializeDOMStuff(editingWheel, saveState, spin);
+    initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels);
 
     // Toggle Text Mode
     if (DOM_ELEMENTS.textModeSwitch != null)

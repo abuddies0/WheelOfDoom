@@ -75,6 +75,9 @@ export class Wheel {
         "silence": new Audio("asset/sound/silence.mp3")
     };
 
+    /** @type {Record<string, Wheel>} A pointer to a collection of cached wheels (for speed ups) */
+    static CACHED_WHEELS = {};
+
     /**
      * Initializes all necessary static variables
      */
@@ -195,9 +198,15 @@ export class Wheel {
     /**
      * Creates a new wheel exclusively from JSON
      * @param {SavedWheel} json The JSON obtained from wheel.toJSON()
+     * @param {boolean} useCache True if the program should first check the cache for wheels matching this name.
      * @return {Wheel} The wheel that contains that json data
      */
-    static fromJSON(json) {
+    static fromJSON(json, useCache=false) {
+        // Check cache first
+        if (useCache && Wheel.CACHED_WHEELS.hasOwnProperty(json.name)) {
+            
+        }
+        // Ignore cache and make new wheel
         const newWheel = Wheel.baseWheel();
         newWheel.fromJSON(json);
         return newWheel;
@@ -206,7 +215,6 @@ export class Wheel {
 
     /**
      * Overwrites all the data of this current wheel.
-     * 
      * @param {SavedWheel} json The json to overwrite the wheel with.
      */
     fromJSON(json) {
