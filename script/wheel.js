@@ -49,7 +49,7 @@ export class Wheel {
      */
     static DEFAULT_SETTINGS = {
         spinStrength: 12,
-        spinDuration: 5000,
+        spinDuration: 2000,
         colorScheme: "classic",
         spinSound: "metalpipe",
         winSound: "yippee"
@@ -230,7 +230,7 @@ export class Wheel {
     /**
      * This should only be called when the wheel needs to first be drawn.
      */
-    drawSegments() {
+    makeBuffer() {
         this.buffered = true;
         if (this.canvas == null || this.contextBuffer == null) return;
         this.canvasBuffer.width = this.canvas.width;
@@ -277,28 +277,8 @@ export class Wheel {
             const sizeFromArc = arcLength; // height ≈ fontSize
 
             this.contextBuffer.font = `${Math.max(6, Math.min(sizeFromWidth, sizeFromArc, 22))}px system-ui`;
-            // let size = 22;
-            // this.contextBuffer.font = `${size}px system-ui`;
-            // let textMeasure = this.contextBuffer.measureText(text);
-            // const arcLength = this.sliceAngles[i] * radius;
-            // while ((textMeasure.width > radius*0.55 || textMeasure.fontBoundingBoxAscent > arcLength) && size > 6) {
-            //     size--;
-            //     this.contextBuffer.font = `${size}px system-ui`;
-            //     textMeasure = this.contextBuffer.measureText(text);
-            // }
 
             this.contextBuffer.fillStyle = "#111";
-            // if (size > 18) {
-            //     this.contextBuffer.textAlign = "center";
-            //     this.contextBuffer.textBaseline = "middle";
-            //     this.contextBuffer.translate(radius*0.6,0);
-            // } 
-            // // Force aligns at the edge when the wheel entry is small
-            // else {
-            //    this.contextBuffer.textAlign = "right";
-            //    this.contextBuffer.textBaseline = "middle";
-            //    this.contextBuffer.translate(radius*0.99,0);
-            // }
             this.contextBuffer.textAlign = "right";
             this.contextBuffer.textBaseline = "middle";
             this.contextBuffer.translate(radius*0.99,0);
@@ -519,38 +499,6 @@ export class Wheel {
         return winningText;
     }
 
-
-    /**
-     * Checks to see if the current winning entry requires sub spins
-     * @returns {boolean} True if there are unresolved sub spins. False otherwise.
-     */
-    requiresSubSpins() {
-        return this.needsSubSpin;
-    }
-
-
-    /**
-     * Changes whether this wheel still needs subwheels to be handled.
-     * @param {boolean} stillNeedsSubSpins True if all subwheels have been handled. False otherwise.
-     */
-    setNeedsSubSpins(stillNeedsSubSpins) {
-        this.needsSubSpin = stillNeedsSubSpins;
-    }
-
-
-    /**
-     * Checks to see if this wheel (and all ACTIVE subwheels) is spinning
-     * @returns {boolean} True if this wheel (and all ACTIVE subwheels) is done spinning. False otherwise
-     */
-    isDoneSpinning() {
-        if (this.hasResult == false) { return false; }
-        if (this.needsSubSpin == true) { return true; }
-        for (const subwheel of Object.values(this.subWheels)) {
-            if (subwheel.isDoneSpinning() == false) { return false; }
-        }
-        return true;
-    }
-
     
     /**
      * Declares that this wheel (and all subwheels) have their results handled
@@ -595,7 +543,7 @@ export class Wheel {
         }
         this.tags.delete("");
 
-        this.drawSegments();
+        this.makeBuffer();
     }
 
 
@@ -615,32 +563,16 @@ export class Wheel {
 
 
     /**
-     * Gets the wheel entry that has the given value
-     * @param {string} value The value (text) of the wheel entry
-     * @returns {WheelEntry|null} The wheel entry with the given value or null if not found.
+     * Stops all sounds from this wheel
      */
-    getWheelEntryByValue(value) {
-        for (const wheelEntry of this.enabledWheelEntries) {
-            if (wheelEntry.getValue() == value) {
-                return wheelEntry;
-            }
-        }
-        return null;
+    stopSound() {
+        this.spinSound.pause();
     }
 
 
-    /**
-     * Gets the total weight of the enabled entries in this wheel
-     * @return {number} The total weight of enabled entries
-     */
-    getTotalWeight() {
-        let weight = 0.0;
-        for (const wheelEntry of this.enabledWheelEntries) {
-            weight += wheelEntry.getWeight();
-        }
-        return weight;
-    }
-
+    /***********************
+     *      MODIFIERS      *
+     ***********************/
 
     /**
      * Adds the given entry to the wheel.
@@ -673,15 +605,6 @@ export class Wheel {
 
 
     /**
-     * Gets the name of the wheel
-     * @returns {string} The name of the wheel
-     */
-    getName() {
-        return this.name || "";
-    }
-
-
-    /**
      * Toggles the given tag
      * @param {string} tag The tag to toggle
      */
@@ -695,23 +618,101 @@ export class Wheel {
 
 
     /**
-     * Forcefully enables/disables the given tag
-     * @param {string} tag The tag to enable/disable
-     * @param {boolean} isEnabled True if it should be enabled. False otherwise.
+     * Shuffles the entries array (for no reason btw)
      */
-    setTag(tag, isEnabled) {
-        // Don't change anything if the tag doesn't exist
-        if (!this.tags.has(tag)) {
-            return;
+    shuffleEntries() {
+        let temp;
+        let j;
+        for (let i = 0; i < this.wheelEntries.length; i++) {
+            j = Math.floor(Math.random() * this.wheelEntries.length);
+            temp = this.wheelEntries[i];
+            this.wheelEntries[i] = this.wheelEntries[j];
+            this.wheelEntries[j] = temp;
         }
-        if (isEnabled) {
-            this.enabledTags.add(tag);
-        }
-        else if (this.enabledTags.has(tag)) {
-            this.enabledTags.delete(tag);
-        }
+    }
 
-        this.updateEntries(this.enabledTags);
+
+    /**
+     * Moves the entry at oldIndex to newIndex
+     * @param {number} oldIndex The index of the element to move
+     * @param {number} newIndex The new index of the element
+     */
+    moveWheelEntry(oldIndex, newIndex) {
+        const movedItem = this.wheelEntries.splice(oldIndex, 1)[0];
+        this.wheelEntries.splice(newIndex, 0, movedItem);
+    }
+
+
+    /********************
+     *      GETTERS     *
+     ********************/
+
+    /**
+     * Gets the wheel entry that has the given value
+     * @param {string} value The value (text) of the wheel entry
+     * @returns {WheelEntry|null} The wheel entry with the given value or null if not found.
+     */
+    getWheelEntryByValue(value) {
+        for (const wheelEntry of this.enabledWheelEntries) {
+            if (wheelEntry.getValue() == value) {
+                return wheelEntry;
+            }
+        }
+        return null;
+    }
+
+
+    /**
+     * Gets the total weight of the enabled entries in this wheel
+     * @return {number} The total weight of enabled entries
+     */
+    getTotalWeight() {
+        let weight = 0.0;
+        for (const wheelEntry of this.enabledWheelEntries) {
+            weight += wheelEntry.getWeight();
+        }
+        return weight;
+    }
+
+
+    /**
+     * Gets the sublevel index of this wheel (AKA the depth along the subwheel tree).
+     * @returns {number} The sublevel of this wheel. 0 For parent wheel.
+     */
+    getSubLevel() {
+        return this.subLevel;
+    }
+
+
+    /**
+     * Gets the canvas of the wheel
+     * @return {HTMLCanvasElement|null} The canvas of this wheel or null if there is no canvas.
+     */
+    getCanvas() {
+        return this.canvas;
+    }
+
+
+    /**
+     * Gets the name of the wheel
+     * @returns {string} The name of the wheel
+     */
+    getName() {
+        return this.name || "";
+    }
+
+
+    /**
+     * Checks to see if this wheel (and all ACTIVE subwheels) is spinning
+     * @returns {boolean} True if this wheel (and all ACTIVE subwheels) is done spinning. False otherwise
+     */
+    isDoneSpinning() {
+        if (this.hasResult == false) { return false; }
+        if (this.needsSubSpin == true) { return true; }
+        for (const subwheel of Object.values(this.subWheels)) {
+            if (subwheel.isDoneSpinning() == false) { return false; }
+        }
+        return true;
     }
 
 
@@ -778,6 +779,33 @@ export class Wheel {
 
 
     /**
+     * Checks whether this wheel is a subwheel.
+     * @returns {boolean} True if this is a subwheel. False otherwise.
+     */
+    isSubwheel() {
+        return this.isSub;
+    }
+
+
+    /**
+     * Gets all wheel entries associated with this wheel (enabled & disabled)
+     * @returns {Array<WheelEntry>} All enabled & disabled wheel entries
+     */
+    getWheelEntries() {
+        return this.wheelEntries;
+    }
+
+
+    /**
+     * Checks to see if the current winning entry requires sub spins
+     * @returns {boolean} True if there are unresolved sub spins. False otherwise.
+     */
+    requiresSubSpins() {
+        return this.needsSubSpin;
+    }
+
+
+    /**
      * Converts this wheel into a JSON element for saving/exporting.
      * @returns {SavedWheel} The JSON version of this wheel including wheel entries and name.
      */
@@ -798,58 +826,10 @@ export class Wheel {
         }));
     }
 
-
-    /**
-     * Stops all sounds from this wheel
-     */
-    stopSound() {
-        this.spinSound.pause();
-    }
-
-
-    /**
-     * Checks whether this wheel is a subwheel.
-     * @returns {boolean} True if this is a subwheel. False otherwise.
-     */
-    isSubwheel() {
-        return this.isSub;
-    }
-
-
-    /**
-     * Gets all wheel entries associated with this wheel (enabled & disabled)
-     * @returns {Array<WheelEntry>} All enabled & disabled wheel entries
-     */
-    getWheelEntries() {
-        return this.wheelEntries;
-    }
-
-
-    /**
-     * Shuffles the entries array (for no reason btw)
-     */
-    shuffleEntries() {
-        let temp;
-        let j;
-        for (let i = 0; i < this.wheelEntries.length; i++) {
-            j = Math.floor(Math.random() * this.wheelEntries.length);
-            temp = this.wheelEntries[i];
-            this.wheelEntries[i] = this.wheelEntries[j];
-            this.wheelEntries[j] = temp;
-        }
-    }
-
-
-    /**
-     * Moves the entry at oldIndex to newIndex
-     * @param {number} oldIndex The index of the element to move
-     * @param {number} newIndex The new index of the element
-     */
-    moveWheelEntry(oldIndex, newIndex) {
-        const movedItem = this.wheelEntries.splice(oldIndex, 1)[0];
-        this.wheelEntries.splice(newIndex, 0, movedItem);
-    }
-
+    
+    /********************
+     *      SETTERS     *
+     ********************/
 
     /**
      * Sets the name of this wheel
@@ -859,6 +839,7 @@ export class Wheel {
         this.name = name;
     }
 
+
     /**
      * Sets the wheel entries of this wheel
      * @param {Array<WheelEntry>} wheelEntries The new wheel entries
@@ -867,6 +848,28 @@ export class Wheel {
         this.wheelEntries = wheelEntries;
         this.updateTags();
     }
+
+
+    /**
+     * Forcefully enables/disables the given tag
+     * @param {string} tag The tag to enable/disable
+     * @param {boolean} isEnabled True if it should be enabled. False otherwise.
+     */
+    setTag(tag, isEnabled) {
+        // Don't change anything if the tag doesn't exist
+        if (!this.tags.has(tag)) {
+            return;
+        }
+        if (isEnabled) {
+            this.enabledTags.add(tag);
+        }
+        else if (this.enabledTags.has(tag)) {
+            this.enabledTags.delete(tag);
+        }
+
+        this.updateEntries(this.enabledTags);
+    }
+
 
     /**
      * Sets the canvas of this wheel
@@ -879,6 +882,7 @@ export class Wheel {
         this.wheelHeight = this.canvas ? this.canvas.height-20 : 600;
     }
 
+
     /**
      * Sets the canvas of this wheel to its saved canvas ID
      */
@@ -890,6 +894,7 @@ export class Wheel {
         this.setCanvas(canvas);
     }
 
+
     /**
      * Saves the ID of the canvas this wheel should use.
      * Note: This does NOT use the canvas automatically. You must call setCanvasFromID.
@@ -899,6 +904,7 @@ export class Wheel {
         this.canvasID = id;
     }
 
+
     /**
      * Sets the spin duration.
      * @param {number} duration The duration in milliseconds
@@ -907,6 +913,7 @@ export class Wheel {
         this.spinDuration = duration;
     }
 
+
     /**
      * Sets the spin strength.
      * @param {number} strength The strength in unknown units.
@@ -914,6 +921,7 @@ export class Wheel {
     setSpinStrength(strength) {
         this.spinStrength = strength;
     }
+
 
     /**
      * Sets the sound that plays while the wheel is spinning
@@ -926,6 +934,7 @@ export class Wheel {
         }
     }
 
+
     /**
      * Sets the sound that plays when the wheel finishes spinning
      * @param {HTMLAudioElement|null} sound The sound to set the wheel to. Refer to Wheel.WIN_SOUNDS
@@ -936,6 +945,7 @@ export class Wheel {
             this.winSound = sound;
         }
     }
+    
 
     /**
      * Sets the color scheme of the wheel.
@@ -946,6 +956,23 @@ export class Wheel {
         if (scheme != null) {
             this.colorScheme = scheme;
         }
+    }
+
+
+    /**
+     * Changes whether this wheel still needs subwheels to be handled.
+     * @param {boolean} stillNeedsSubSpins True if all subwheels have been handled. False otherwise.
+     */
+    setNeedsSubSpins(stillNeedsSubSpins) {
+        this.needsSubSpin = stillNeedsSubSpins;
+    }
+
+
+    /**
+     * Clears all the subwheels of this wheel
+     */
+    clearSubwheels() {
+        this.subWheels = {};
     }
 }
 

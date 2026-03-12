@@ -385,7 +385,7 @@ function restructureWheels() {
     // Is this really slow and awful? Yes. But- it's funny.
     let subLevels = 0;
     for (const wheel of wheels) {
-        if (wheel.subLevel > subLevels) {
+        if (wheel.getSubLevel() > subLevels) {
             subLevels = wheel.subLevel;
         }
     }
@@ -402,7 +402,7 @@ function restructureWheels() {
         // html += `<div class="wheel-row" style="height=${wheelHeight};left=0;top=${wheelHeight*level};">\n`;
         html += `<div class="wheel-row" style="height=${wheelHeight};">\n`;
         for (const wheel of wheels) {
-            if (wheel.subLevel != level) {
+            if (wheel.getSubLevel() != level) {
                 continue;
             }
             // We now know that the sublevel is correct
@@ -420,7 +420,7 @@ function restructureWheels() {
     setTimeout(() => {
         for (const wheel of wheels) {
             wheel.setCanvasFromID();
-            wheel.drawSegments();
+            wheel.makeBuffer();
         }
         // Next up, draw a bunch of lines between them all
         const wheelConnections = document.getElementById("wheel-connections");
@@ -431,15 +431,18 @@ function restructureWheels() {
         const oy = wheelConnections.getBoundingClientRect().top;
         let parentRect, px, py;
         let childRect, cx, cy;
+        let canvas, subCanvas;
         connectionsContext.clearRect(0, 0, wheelConnections.width, wheelConnections.height);
         for (const wheel of wheels) {
-            if (wheel.canvas == null) { continue; }
-            parentRect = wheel.canvas.getBoundingClientRect();
+            canvas = wheel.getCanvas();
+            if (canvas == null) { continue; }
+            parentRect = canvas.getBoundingClientRect();
             px = parentRect.left + parentRect.width * 0.5;
             py = parentRect.top + parentRect.height * 0.975;
             for (const subWheel of Object.values(wheel.subWheels)) {
-                if (subWheel.canvas == null) { continue; }
-                childRect = subWheel.canvas.getBoundingClientRect();
+                subCanvas = subWheel.getCanvas();
+                if (subCanvas == null) { continue; }
+                childRect = subCanvas.getBoundingClientRect();
                 cx = childRect.left + childRect.width * 0.5;
                 cy = childRect.top + childRect.height * 0.025;
                 connectionsContext.save();
@@ -473,7 +476,7 @@ function clearSubWheels() {
             i--;
         }
         else {
-            wheels[i].subWheels = {};
+            wheels[i].clearSubwheels();
         }
     }
 
