@@ -79,12 +79,11 @@ export class Wheel {
      * Initializes all necessary static variables
      */
     static initialize_statics() {
-        for (const [key, sound] of Object.entries(Wheel.SPIN_SOUNDS)) {
+        for (const sound of Object.values(Wheel.SPIN_SOUNDS)) {
             sound.loop = true;
             sound.volume = 0.1;
         }
-        for (const [key, sound] of Object.entries(Wheel.WIN_SOUNDS)) {
-            sound.loop = true;
+        for (const sound of Object.values(Wheel.WIN_SOUNDS)) {
             sound.volume = 0.2;
         }
         Wheel.INITIALIZED = true;
@@ -331,18 +330,18 @@ export class Wheel {
         this.context.restore();
 
         // Draw pointer
-        // const pointerSize = this.canvas.height * 0.5 * 0.04;
-        // this.context.beginPath();
-        // this.context.fillStyle = "#ef4444";
-        // this.context.moveTo(this.canvas.width - pointerSize*3, this.canvas.height*0.5);
-        // this.context.lineTo(this.canvas.width - pointerSize*0.1, this.canvas.height*0.5 - pointerSize*1.4);
-        // this.context.lineTo(this.canvas.width - pointerSize*0.1, this.canvas.height*0.5 + pointerSize*1.4);
-        // this.context.closePath();
-        // this.context.fill();
+        const pointerSize = this.canvas.height * 0.5 * 0.04;
+        this.context.beginPath();
+        this.context.fillStyle = "#ef4444";
+        this.context.moveTo(this.canvas.width - pointerSize*3, this.canvas.height*0.5);
+        this.context.lineTo(this.canvas.width - pointerSize*0.1, this.canvas.height*0.5 - pointerSize*1.4);
+        this.context.lineTo(this.canvas.width - pointerSize*0.1, this.canvas.height*0.5 + pointerSize*1.4);
+        this.context.closePath();
+        this.context.fill();
 
-        // this.context.strokeStyle = "black";
-        // this.context.lineWidth = 1;
-        // this.context.stroke();
+        this.context.strokeStyle = "black";
+        this.context.lineWidth = 0.5;
+        this.context.stroke();
     }
 
 
@@ -797,6 +796,14 @@ export class Wheel {
             "wheelEntries": this.wheelEntries.map(entry => entry.toJSON()),
             "enabledTags": Array.from(this.enabledTags)
         }));
+    }
+
+
+    /**
+     * Stops all sounds from this wheel
+     */
+    stopSound() {
+        this.spinSound.pause();
     }
 
 
