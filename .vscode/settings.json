@@ -6,7 +6,7 @@
         "commands": [
             {
                 "match": "WheelOfDoom\\\\script\\\\[^\\\\]+\\.js$", // Regex to match any JS file changes
-                "cmd": "python \"C:\\Users\\abudd\\OneDrive\\Desktop\\Random Nonsense\\Web Dev\\WheelOfDoom\\script\\bundler.py\"" // Run the bundler
+                "cmd": "python \"script\\bundler.py\"" // Run the bundler
             }
         ]
     }
