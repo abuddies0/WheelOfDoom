@@ -2,32 +2,9 @@
 
 import { getSavedWheels } from "./main.js";
 
-/**
- * @typedef {Object} SavedWheelEntry A wheel entry in JSON format
- * @property {string} value The text value of this wheel entry
- * @property {number} weight The weight of this wheel entry
- * @property {Array<string>} tags A list of all tags of this wheel entry
- */
-
-/**
- * @typedef {Object} WheelSettings The JSON version of all wheel settings
- * @property {number} spinDuration The duration of the spin in milliseconds
- * @property {number} spinStrength The strength of a spin
- * @property {string} spinSound The key for the spinning sound in Wheel.SPIN_SOUNDS
- * @property {string} winSound The key for the winning sound in Wheel.WIN_SOUNDS
- * @property {string} colorScheme The key for the color scheme in Wheel.COLOR_SCHEMES
- */
-
-/**
- * @typedef {Object} SavedWheel
- * @property {string} name The name of the wheel
- * @property {WheelSettings} settings The settings of the wheel
- * @property {string} riggedEntry The value (text) of the rigged entry
- * @property {number} riggedAmount The number of times the wheel should stay rigged
- * @property {Array<SavedWheelEntry>} wheelEntries A list of all wheel entries
- * @property {Array<string>} enabledTags A list of all enabled tags
- */
-
+/** @typedef {import("./update.js").SavedWheelEntry} SavedWheelEntry */
+/** @typedef {import("./update.js").WheelSettings} WheelSettings */
+/** @typedef {import("./update.js").SavedWheel} SavedWheel */
 
 
 
@@ -409,10 +386,14 @@ export class Wheel {
         }
         else if (this.isSpinning) {
             this.isSpinning = false;
-            this.spinSound.currentTime = 0;
-            this.spinSound.pause();
-            this.winSound.currentTime = 0;
-            this.winSound.play();
+            if (this.spinSound instanceof HTMLAudioElement) {
+                this.spinSound.currentTime = 0;
+                this.spinSound.pause();
+            }
+            if (this.winSound instanceof HTMLAudioElement) {
+                this.winSound.currentTime = 0;
+                this.winSound.play();
+            }
             this.hasResult = true;
             this.rotation = this.targetRotation;
         }
@@ -820,6 +801,7 @@ export class Wheel {
     toJSON() {
         return JSON.parse(JSON.stringify({
             "name": this.name,
+            "version": "1.0.0",
             "settings": {
                 "spinDuration": this.spinDuration,
                 "spinStrength": this.spinStrength,

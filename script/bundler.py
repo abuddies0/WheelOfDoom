@@ -20,11 +20,13 @@ def main():
     dom_stuff = open(f"{MAIN_PATH}dom_stuff.js", "r")
     main = open(f"{MAIN_PATH}main.js", "r")
     wheel = open(f"{MAIN_PATH}wheel.js", "r")
+    update = open(f"{MAIN_PATH}update.js", "r")
 
     bundled = open(f"{MAIN_PATH}bundled.js", "w")
 
     write_stuff(dom_stuff, bundled)
     write_stuff(wheel, bundled)
+    write_stuff(update, bundled)
     write_stuff(main, bundled)
 
     dom_stuff.close()

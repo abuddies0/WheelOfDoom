@@ -1,6 +1,12 @@
 // @ts-check
 import { Wheel, WheelEntry } from './wheel.js'
 import { initializeDOMStuff, DOM_ELEMENTS } from './dom_stuff.js'
+import { updateWheelJSON } from "./update.js";
+
+
+/** @typedef {import("./update.js").SavedWheelEntry} SavedWheelEntry */
+/** @typedef {import("./update.js").WheelSettings} WheelSettings */
+/** @typedef {import("./update.js").SavedWheel} SavedWheel */
 
 
 /** @type {boolean} True if editing entries through text */
@@ -516,8 +522,21 @@ function clearSubWheels() {
 /* ---------------- Persistence ---------------- */
 
 /**
+ * Tries to update all saved wheels
+ */
+function updateSavedWheels() {
+    const savedWheels = getSavedWheels();
+    for (const [key, json] of Object.entries(savedWheels)) {
+        const updatedJSON = updateWheelJSON(json, key);
+        if (updatedJSON != null) { savedWheels[key] = updatedJSON; }
+    }
+    setSavedWheels(savedWheels);
+}
+
+
+/**
  * All the saved wheels in local cache
- * @returns {Record<string, import("./wheel.js").SavedWheel>} All the saved wheels in the local cache
+ * @returns {Record<string, SavedWheel>} All the saved wheels in the local cache
  */
 export function getSavedWheels() {
     return JSON.parse(localStorage.getItem("savedWheels") || "{}");
@@ -551,12 +570,20 @@ function clearCache() {
 }
 
 /**
- * Loads the most recently used wheel
+ * Loads the most recently used wheel.
+ * Also tries to update the wheel at the same time.
  */
 function loadState() {
     const saved = localStorage.getItem("wheelState");
     if (saved && saved != "") {
-        loadWheelData(JSON.parse(saved));
+        const wheel = JSON.parse(saved);
+        const updatedWheel = updateWheelJSON(wheel);
+        if (updatedWheel != null) {
+            loadWheelData(updatedWheel);
+        }
+        else {
+            loadWheelData(wheel);
+        }
     }
 }
 
@@ -582,6 +609,8 @@ export function loadWheelData(json) {
 document.addEventListener("DOMContentLoaded", () => {
     editingWheel = Wheel.baseWheel();
     wheels.push(editingWheel)
+    // Update all cached wheels
+    updateSavedWheels();
     // Attempt to load wheel from cache
     loadState();
     initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels);
