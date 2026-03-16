@@ -1,57 +1,57 @@
  // @ts-check
 
  const DOM_ELEMENTS = {
-     canvas: document.getElementById("mainWheelCanvas"),
+     canvas: document.getElementById("main-wheel-canvas"),
      wheelWrapper: document.getElementById("wheel-wrapper"),
 
     // Wheel Entries
-     tableBody: document.querySelector("#wheelEntryTable tbody"),
-     tagFiltersDiv: document.getElementById("tagFilters"),
-     textModeSwitch: document.getElementById("textModeSwitch"),
-     textModeArea: document.getElementById("textModeArea"),
-     shuffleBtn: document.getElementById("shuffleBtn"),
-     wheelEntriesCountSpan: document.getElementById("wheelEntriesCount"),
+     tableBody: document.querySelector("#wheel-entry-table tbody"),
+     tagFiltersDiv: document.getElementById("tag-filters"),
+     textModeSwitch: document.getElementById("text-mode-switch"),
+     textModeArea: document.getElementById("text-mode-area"),
+     shuffleButton: document.getElementById("shuffle-button"),
+     wheelEntriesCountSpan: document.getElementById("wheel-entries-count"),
 
     // General toolbar buttons
-     newWheelBtn: document.getElementById("newWheelBtn"),
-     saveWheelBtn: document.getElementById("saveWheelBtn"),
-     saveAsWheelBtn: document.getElementById("saveAsWheelBtn"),
-     loadWheelBtn: document.getElementById("loadWheelBtn"),
-     copyBtn: document.getElementById("copyBtn"),
-     importFile: document.getElementById("importFile"),
-     importBtn: document.getElementById("importBtn"),
-     exportBtn: document.getElementById("exportBtn"),
-     spinBtn: document.getElementById("spinBtn"),
+     newWheelButton: document.getElementById("new-wheel-button"),
+     saveWheelButton: document.getElementById("save-wheel-button"),
+     saveAsWheelButton: document.getElementById("save-as-wheel-button"),
+     loadWheelButton: document.getElementById("load-wheel-button"),
+     copyButton: document.getElementById("copy-button"),
+     importFile: document.getElementById("import-file"),
+     importButton: document.getElementById("import-button"),
+     exportButton: document.getElementById("export-button"),
+     spinButton: document.getElementById("spin-button"),
 
     // Modals
-     modal: document.getElementById("winnerModal"),
-     winnerText: document.getElementById("winnerText"),
-     closeModalBtn: document.getElementById("closeModalBtn"),
+     modal: document.getElementById("winner-modal"),
+     winnerText: document.getElementById("winner-text"),
+     closeModalButton: document.getElementById("close-modal-button"),
 
-     settingsBtn: document.getElementById("settingsBtn"),
-     settingsModal: document.getElementById("settingsModal"),
-     closeSettingsBtn: document.getElementById("closeSettingsBtn"),
+     settingsButton: document.getElementById("settings-button"),
+     settingsModal: document.getElementById("settings-modal"),
+     closeSettingsButton: document.getElementById("close-settings-button"),
 
-     confirmSaveAsBtn: document.getElementById("confirmSaveAsBtn"),
-     cancelSaveAsBtn: document.getElementById("cancelSaveAsBtn"),
+     confirmSaveAsButton: document.getElementById("confirm-save-as-button"),
+     cancelSaveAsButton: document.getElementById("cancel-save-as-button"),
 
-     savedWheelsList: document.getElementById("savedWheelsList"),
-     closeLoadBtn: document.getElementById("closeLoadBtn"),
+     savedWheelsList: document.getElementById("saved-wheels-list"),
+     closeLoadButton: document.getElementById("close-load-button"),
 
-     saveModal: document.getElementById("saveModal"),
-     loadModal: document.getElementById("loadModal"),
+     saveModal: document.getElementById("save-modal"),
+     loadModal: document.getElementById("load-modal"),
 
-     saveNameInput: document.getElementById("saveNameInput"),
-     loadList: document.getElementById("loadList"),
+     saveNameInput: document.getElementById("save-name-input"),
+     loadList: document.getElementById("load-list"),
 
     // Wheel Settings
-     spinStrengthSlider: document.getElementById("spinStrengthSlider"),
-     spinStrengthNumber: document.getElementById("spinStrengthNumber"),
-     spinDurationSlider: document.getElementById("spinDurationSlider"),
-     spinDurationNumber: document.getElementById("spinDurationNumber"),
-     colorSchemeSelect: document.getElementById("colorSchemeSelect"),
-     spinSoundSelect: document.getElementById("spinSoundSelect"),
-     victorySoundSelect: document.getElementById("victorySoundSelect"),
+     spinStrengthSlider: document.getElementById("spin-strength-slider"),
+     spinStrengthNumber: document.getElementById("spin-strength-number"),
+     spinDurationSlider: document.getElementById("spin-duration-slider"),
+     spinDurationNumber: document.getElementById("spin-duration-number"),
+     colorSchemeSelect: document.getElementById("color-scheme-select"),
+     spinSoundSelect: document.getElementById("spin-sound-select"),
+     winSoundSelect: document.getElementById("win-sound-select"),
 
      // Debug Stuff
      fpsCounter: document.getElementById("fps")
@@ -66,24 +66,24 @@
  * @param {() => void} cacheSavedWheels Call this to cache all saved wheels.
  */
 function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
-    if (DOM_ELEMENTS.cancelSaveAsBtn != null) {
-        DOM_ELEMENTS.cancelSaveAsBtn.onclick = () => { if (DOM_ELEMENTS.saveModal !=  null) DOM_ELEMENTS.saveModal.classList.add("hidden")};
+    if (DOM_ELEMENTS.cancelSaveAsButton != null) {
+        DOM_ELEMENTS.cancelSaveAsButton.onclick = () => { if (DOM_ELEMENTS.saveModal !=  null) DOM_ELEMENTS.saveModal.classList.add("hidden")};
     }
-    if (DOM_ELEMENTS.closeLoadBtn != null && DOM_ELEMENTS.loadModal !=  null) {
-        DOM_ELEMENTS.closeLoadBtn.onclick = () => { if (DOM_ELEMENTS.loadModal !=  null) DOM_ELEMENTS.loadModal.classList.add("hidden")};
+    if (DOM_ELEMENTS.closeLoadButton != null && DOM_ELEMENTS.loadModal !=  null) {
+        DOM_ELEMENTS.closeLoadButton.onclick = () => { if (DOM_ELEMENTS.loadModal !=  null) DOM_ELEMENTS.loadModal.classList.add("hidden")};
     }
 
     // General Modal
-    if (DOM_ELEMENTS.closeModalBtn != null) {
-        DOM_ELEMENTS.closeModalBtn.onclick = () => {
+    if (DOM_ELEMENTS.closeModalButton != null) {
+        DOM_ELEMENTS.closeModalButton.onclick = () => {
             if (DOM_ELEMENTS.modal == null) { return; }
             DOM_ELEMENTS.modal.classList.add("hidden");
         };
     }
 
     // Settings
-    if (DOM_ELEMENTS.settingsBtn != null) {
-        DOM_ELEMENTS.settingsBtn.onclick = () => {
+    if (DOM_ELEMENTS.settingsButton != null) {
+        DOM_ELEMENTS.settingsButton.onclick = () => {
             if (DOM_ELEMENTS.settingsModal != null)
                 DOM_ELEMENTS.settingsModal.classList.remove("hidden");
 
@@ -101,13 +101,13 @@ function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
                 DOM_ELEMENTS.colorSchemeSelect.value = Wheel.getColorSchemeFromFunction(editingWheel.colorScheme) || "";
             if (DOM_ELEMENTS.spinSoundSelect != null && DOM_ELEMENTS.spinSoundSelect instanceof HTMLInputElement)
                 DOM_ELEMENTS.spinSoundSelect.value = Wheel.getSpinSoundFromAudio(editingWheel.spinSound) || "";
-            if (DOM_ELEMENTS.victorySoundSelect != null && DOM_ELEMENTS.victorySoundSelect instanceof HTMLInputElement)
-                DOM_ELEMENTS.victorySoundSelect.value = Wheel.getWinSoundFromAudio(editingWheel.winSound) || "";
+            if (DOM_ELEMENTS.winSoundSelect != null && DOM_ELEMENTS.winSoundSelect instanceof HTMLInputElement)
+                DOM_ELEMENTS.winSoundSelect.value = Wheel.getWinSoundFromAudio(editingWheel.winSound) || "";
         };
     }
 
-    if (DOM_ELEMENTS.closeSettingsBtn != null) {
-        DOM_ELEMENTS.closeSettingsBtn.onclick = () => {
+    if (DOM_ELEMENTS.closeSettingsButton != null) {
+        DOM_ELEMENTS.closeSettingsButton.onclick = () => {
             if (DOM_ELEMENTS.settingsModal == null) { return null; }
             DOM_ELEMENTS.settingsModal.classList.add("hidden");
         };
@@ -117,13 +117,13 @@ function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
     if (DOM_ELEMENTS.wheelWrapper != null && DOM_ELEMENTS.wheelWrapper instanceof HTMLInputElement) {
         DOM_ELEMENTS.wheelWrapper.onclick = () => { spin(); };
     }
-    if (DOM_ELEMENTS.spinBtn != null) {
-        DOM_ELEMENTS.spinBtn.onclick = () => { spin(); };
+    if (DOM_ELEMENTS.spinButton != null) {
+        DOM_ELEMENTS.spinButton.onclick = () => { spin(); };
     }
 
     // Import / Export
-    if (DOM_ELEMENTS.exportBtn != null) {
-        DOM_ELEMENTS.exportBtn.onclick = () => {
+    if (DOM_ELEMENTS.exportButton != null) {
+        DOM_ELEMENTS.exportButton.onclick = () => {
             if (editingWheel == null) { return; }
             const blob = new Blob(
                 [JSON.stringify(editingWheel.toJSON(), null, 2)],
@@ -141,8 +141,8 @@ function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
         };
     }
     
-    if (DOM_ELEMENTS.importBtn != null) {
-        DOM_ELEMENTS.importBtn.onclick = () => { if (DOM_ELEMENTS.importFile != null) DOM_ELEMENTS.importFile.click() };
+    if (DOM_ELEMENTS.importButton != null) {
+        DOM_ELEMENTS.importButton.onclick = () => { if (DOM_ELEMENTS.importFile != null) DOM_ELEMENTS.importFile.click() };
     }
     
     if (DOM_ELEMENTS.importFile != null) {
@@ -171,8 +171,8 @@ function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
     }
 
     // Copy
-    if (DOM_ELEMENTS.copyBtn != null) {
-        DOM_ELEMENTS.copyBtn.onclick = () => {
+    if (DOM_ELEMENTS.copyButton != null) {
+        DOM_ELEMENTS.copyButton.onclick = () => {
             if (editingWheel == null) { return; }
             navigator.clipboard.writeText(JSON.stringify(editingWheel.toJSON()));
             showCard("Copied JSON", 2);
@@ -194,8 +194,8 @@ function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
         cacheSavedWheels();
     }
 
-    if (DOM_ELEMENTS.confirmSaveAsBtn != null) {
-        DOM_ELEMENTS.confirmSaveAsBtn.onclick = () => {
+    if (DOM_ELEMENTS.confirmSaveAsButton != null) {
+        DOM_ELEMENTS.confirmSaveAsButton.onclick = () => {
             if (DOM_ELEMENTS.saveNameInput == null || 
                 !(DOM_ELEMENTS.saveNameInput instanceof HTMLInputElement) ||
                 editingWheel == null ||
@@ -220,14 +220,14 @@ function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
         };
     }
 
-    if (DOM_ELEMENTS.cancelSaveAsBtn != null) {
-        DOM_ELEMENTS.cancelSaveAsBtn.onclick = () => {
+    if (DOM_ELEMENTS.cancelSaveAsButton != null) {
+        DOM_ELEMENTS.cancelSaveAsButton.onclick = () => {
             if (DOM_ELEMENTS.saveModal != null) { DOM_ELEMENTS.saveModal.classList.add("hidden"); }
         }
     }
 
-    if (DOM_ELEMENTS.saveWheelBtn != null) {
-        DOM_ELEMENTS.saveWheelBtn.onclick = () => {
+    if (DOM_ELEMENTS.saveWheelButton != null) {
+        DOM_ELEMENTS.saveWheelButton.onclick = () => {
             if (editingWheel == null) { return null; }
             if (editingWheel.getName() == null || editingWheel.getName() == "") {
                 saveAs();
@@ -244,14 +244,14 @@ function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
         };
     }
 
-    if (DOM_ELEMENTS.saveAsWheelBtn != null) {
-        DOM_ELEMENTS.saveAsWheelBtn.onclick = () => {
+    if (DOM_ELEMENTS.saveAsWheelButton != null) {
+        DOM_ELEMENTS.saveAsWheelButton.onclick = () => {
             saveAs();
         };
     }
 
-    if (DOM_ELEMENTS.loadWheelBtn != null) {
-        DOM_ELEMENTS.loadWheelBtn.onclick = () => {
+    if (DOM_ELEMENTS.loadWheelButton != null) {
+        DOM_ELEMENTS.loadWheelButton.onclick = () => {
             if (DOM_ELEMENTS.loadModal == null) { return; }
             DOM_ELEMENTS.loadModal.classList.remove("hidden");
             rebuildLoadMenu();
@@ -274,22 +274,22 @@ function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
             title.textContent = name;
 
             const btns = document.createElement("div");
-            btns.className = "wheelBtns";
+            btns.className = "wheelButtons";
 
-            const loadBtn = document.createElement("button");
-            loadBtn.className = "primaryBtn";
-            loadBtn.textContent = "Load";
-            loadBtn.onclick = () => {
+            const loadButton = document.createElement("button");
+            loadButton.className = "primaryButton";
+            loadButton.textContent = "Load";
+            loadButton.onclick = () => {
                 if (DOM_ELEMENTS.loadModal == null) { return; }
                 loadWheel(name);
                 DOM_ELEMENTS.loadModal.classList.add("hidden");
                 showCard("Wheel Loaded", 3);
             };
 
-            const delBtn = document.createElement("button");
-            delBtn.className = "deleteBtn";
-            delBtn.textContent = "Delete";
-            delBtn.onclick = () => {
+            const delButton = document.createElement("button");
+            delButton.className = "deleteButton";
+            delButton.textContent = "Delete";
+            delButton.onclick = () => {
                 if (!confirm(`Delete "${name}"?`)) return;
 
                 const wheels = getSavedWheels();
@@ -300,7 +300,7 @@ function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
                 showCard("Deleted", 3);
             };
 
-            btns.append(loadBtn, delBtn);
+            btns.append(loadButton, delButton);
             row.append(title, btns);
             if (DOM_ELEMENTS.loadList == null) { return; }
             DOM_ELEMENTS.loadList.append(row);
@@ -320,8 +320,8 @@ function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
         showCard(`Wheel "${name}" loaded!`, 3);
     }
 
-    if (DOM_ELEMENTS.newWheelBtn != null) {
-        DOM_ELEMENTS.newWheelBtn.onclick = () => {
+    if (DOM_ELEMENTS.newWheelButton != null) {
+        DOM_ELEMENTS.newWheelButton.onclick = () => {
             loadWheelData(Wheel.baseWheel().toJSON()); 
             showCard("Made New Wheel!", 2);
         }
@@ -409,8 +409,8 @@ function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
         };
     }
 
-    if (DOM_ELEMENTS.victorySoundSelect != null) {
-        DOM_ELEMENTS.victorySoundSelect.oninput = e => {
+    if (DOM_ELEMENTS.winSoundSelect != null) {
+        DOM_ELEMENTS.winSoundSelect.oninput = e => {
             if (e.target != null) {
                 // @ts-ignore
                 editingWheel.winSound = Wheel.WIN_SOUNDS[e.target.value]
@@ -1756,10 +1756,10 @@ function rebuildTable() {
         const tr = document.createElement("tr");
 
         tr.innerHTML = `
-            <td><input class="textEntry" value="${wheelEntry.getValue()}"></td>
-            <td><input class="weightEntry" type="number" min="1" value="${wheelEntry.getWeight()}"></td>
-            <td><input class="tagEntry" value="${wheelEntry.getTags()}"></td>
-            <td><button class="deleteEntryBtn" data-i="${i}">✕</button></td>
+            <td><input class="text-entry" value="${wheelEntry.getValue()}"></td>
+            <td><input class="weight-entry" type="number" min="1" value="${wheelEntry.getWeight()}"></td>
+            <td><input class="tag-entry" value="${wheelEntry.getTags()}"></td>
+            <td><button class="delete-entry-button" data-i="${i}">✕</button></td>
         `;
 
         const wheelEntryCell = tr.children[0].firstChild;
@@ -1957,7 +1957,7 @@ function updateTagFilters() {
     editingWheel.tags.forEach(tag => {
         if (editingWheel == null) { return; }
         const div = document.createElement("div");
-        div.className = "tagToggle";
+        div.className = "tag-toggle";
 
         if (editingWheel.enabledTags.has(tag)) {
             div.classList.add("active");
@@ -2049,7 +2049,7 @@ function showWinner() {
 
 
 /* ------------- Utilities ------------- */
-const cardContainer = document.getElementById("cardContainer");
+const cardContainer = document.getElementById("card-container");
 
 /**
  * Makes a "toast" card at the top of the screen showing msg for a short duration
@@ -2059,11 +2059,11 @@ const cardContainer = document.getElementById("cardContainer");
 function showCard(msg, seconds = 3) {
     if (cardContainer == null) { return; }
     const card = document.createElement("div");
-    card.className = "toastCard";
+    card.className = "toast-card";
     card.textContent = msg;
 
     const bar = document.createElement("div");
-    bar.className = "toastBar";
+    bar.className = "toast-bar";
 
     card.appendChild(bar);
     cardContainer.appendChild(card);
@@ -2101,7 +2101,7 @@ function restructureWheels() {
     const wheelHeight = maxHeight / (subLevels+1);
 
     // Settings button (always there)
-    let html = `<button id="settingsBtn" class="settings-btn">⚙</button>\n`;
+    let html = `<button id="settings-button" class="settings-button">⚙</button>\n`;
     html += `<canvas id="wheel-connections" width="650" height="650"></canvas>\n`;
     // Build canvases row-by-row
     let i = 0;
@@ -2327,8 +2327,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Shuffle button
-    if (DOM_ELEMENTS.shuffleBtn != null)
-    DOM_ELEMENTS.shuffleBtn.onclick = () => {
+    if (DOM_ELEMENTS.shuffleButton != null)
+    DOM_ELEMENTS.shuffleButton.onclick = () => {
         if (editingWheel == null) { return; }
         editingWheel.shuffleEntries();
         rebuildTable();

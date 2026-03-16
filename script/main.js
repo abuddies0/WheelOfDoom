@@ -73,10 +73,10 @@ function rebuildTable() {
         const tr = document.createElement("tr");
 
         tr.innerHTML = `
-            <td><input class="textEntry" value="${wheelEntry.getValue()}"></td>
-            <td><input class="weightEntry" type="number" min="1" value="${wheelEntry.getWeight()}"></td>
-            <td><input class="tagEntry" value="${wheelEntry.getTags()}"></td>
-            <td><button class="deleteEntryBtn" data-i="${i}">✕</button></td>
+            <td><input class="text-entry" value="${wheelEntry.getValue()}"></td>
+            <td><input class="weight-entry" type="number" min="1" value="${wheelEntry.getWeight()}"></td>
+            <td><input class="tag-entry" value="${wheelEntry.getTags()}"></td>
+            <td><button class="delete-entry-button" data-i="${i}">✕</button></td>
         `;
 
         const wheelEntryCell = tr.children[0].firstChild;
@@ -274,7 +274,7 @@ function updateTagFilters() {
     editingWheel.tags.forEach(tag => {
         if (editingWheel == null) { return; }
         const div = document.createElement("div");
-        div.className = "tagToggle";
+        div.className = "tag-toggle";
 
         if (editingWheel.enabledTags.has(tag)) {
             div.classList.add("active");
@@ -366,7 +366,7 @@ function showWinner() {
 
 
 /* ------------- Utilities ------------- */
-const cardContainer = document.getElementById("cardContainer");
+const cardContainer = document.getElementById("card-container");
 
 /**
  * Makes a "toast" card at the top of the screen showing msg for a short duration
@@ -376,11 +376,11 @@ const cardContainer = document.getElementById("cardContainer");
 export function showCard(msg, seconds = 3) {
     if (cardContainer == null) { return; }
     const card = document.createElement("div");
-    card.className = "toastCard";
+    card.className = "toast-card";
     card.textContent = msg;
 
     const bar = document.createElement("div");
-    bar.className = "toastBar";
+    bar.className = "toast-bar";
 
     card.appendChild(bar);
     cardContainer.appendChild(card);
@@ -418,7 +418,7 @@ function restructureWheels() {
     const wheelHeight = maxHeight / (subLevels+1);
 
     // Settings button (always there)
-    let html = `<button id="settingsBtn" class="settings-btn">⚙</button>\n`;
+    let html = `<button id="settings-button" class="settings-button">⚙</button>\n`;
     html += `<canvas id="wheel-connections" width="650" height="650"></canvas>\n`;
     // Build canvases row-by-row
     let i = 0;
@@ -644,8 +644,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Shuffle button
-    if (DOM_ELEMENTS.shuffleBtn != null)
-    DOM_ELEMENTS.shuffleBtn.onclick = () => {
+    if (DOM_ELEMENTS.shuffleButton != null)
+    DOM_ELEMENTS.shuffleButton.onclick = () => {
         if (editingWheel == null) { return; }
         editingWheel.shuffleEntries();
         rebuildTable();

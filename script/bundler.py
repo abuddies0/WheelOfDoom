@@ -1,7 +1,8 @@
 import re
+from pathlib import Path
 
 
-MAIN_PATH = "C:\\Users\\abudd\\OneDrive\\Desktop\\Random Nonsense\\Web Dev\\WheelOfDoom\\script\\"
+MAIN_PATH = str(Path(__file__).resolve())[0:-10]
 
 
 r_ignore = r'^import|^//@ts-check'
