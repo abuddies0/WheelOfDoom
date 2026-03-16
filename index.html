@@ -7,6 +7,7 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
 </head>
 <body>
+    <div id="fps" style="position:absolute; left:10px; top:10px; justify-self:left; align-self:normal;">100</div>
     <div class="app">
         <div id="generalToolbar">
             <button id="newWheelBtn" class="toolBtn">
@@ -73,10 +74,10 @@
         </aside>
 
         <!-- WHEEL -->
-        <main class="wheel-wrapper">
+        <main id="wheel-wrapper">
             <button id="settingsBtn" class="settings-btn">⚙</button>
-            <div class="pointer"></div>
-            <canvas id="wheelCanvas" width="650" height="650"></canvas>
+            <class id="wheel-connections" width="650" height="650"></class>
+            <canvas id="mainWheelCanvas" width="650" height="650"></canvas>
         </main>
 
     </div>
@@ -86,7 +87,7 @@
     <div id="winnerModal" class="modal hidden">
         <div class="modalBox">
             <h2>🎉 Winner!</h2>
-            <div id="winnerText"></div>
+            <div id="winnerText" style="overflow-wrap:anywhere;"></div>
             <button id="closeModalBtn">Close</button>
         </div>
     </div>
@@ -129,10 +130,10 @@
         </div>
 
         <div class="rangeGroup">
-            <small>Spin Duration (seconds)</small>
-            <span>0.1</span>
-            <input id="spinDurationSlider" type="range" min="0.1" max="60" step="1">
-            <span>60</span>
+            <small>Spin Duration (milliseconds)</small>
+            <span>50</span>
+            <input id="spinDurationSlider" type="range" min="50" max="60000" step="50">
+            <span>60000</span>
             <input id="spinDurationNumber" type="number">
         </div>
 
@@ -165,6 +166,6 @@
 
     <div id="cardContainer"></div>
 
-    <script src="script/main.js"></script>
+    <script src="script/bundled.js"></script>
 </body>
 </html>

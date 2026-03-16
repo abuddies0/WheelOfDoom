@@ -326,9 +326,9 @@ input {
     overflow: auto;
 }
 
-/* ---------- Wheel ---------- */
+/*------------ WHEEL ----------------*/
 
-.wheel-wrapper {
+#wheel-wrapper {
     position: relative;
 
     /* Match canvas size exactly */
@@ -336,7 +336,8 @@ input {
     height: 650px;
 
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: top;
     justify-content: center;
 }
 
@@ -344,29 +345,25 @@ canvas {
     display: block;
 }
 
-.pointer {
-    position: absolute;
-
-    /* vertically centered on wheel */
-    top: 50%;
-    transform: translateY(-50%) rotate(180deg);
-
-    /* slightly overlapping the rim */
-    right: -18px;
-
-    width: 0;
-    height: 0;
-
-    /* triangle pointing left */
-    border-top: 22px solid transparent;
-    border-bottom: 22px solid transparent;
-    border-left: 42px solid #ef4444;
-
-    filter: drop-shadow(0 3px 6px rgba(0,0,0,0.7));
-    z-index: 1;
+.wheel-row {
+    flex-direction: row;
+    width: 100%;
+    display: flex;
+    align-content: center;
+    justify-content: center;
+    overflow:hidden;
 }
 
-/*------------ WHEEL SETTINGS ----------------*/
+.wheel-canvas {
+    display: flex;
+    min-width: 0;
+}
+
+#wheel-connections {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
 
 .settings-btn {
     position: absolute;

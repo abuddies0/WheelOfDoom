@@ -1,0 +1,13 @@
+{
+    "emeraldwalk.runonsave": {
+        "message": "Started bundling scripts...",
+        "messageAfter": "Finished bundling scripts.",
+        "showElapsed": true,
+        "commands": [
+            {
+                "match": "WheelOfDoom\\\\script\\\\[^\\\\]+\\.js$", // Regex to match any JS file changes
+                "cmd": "python \"script\\bundler.py\"" // Run the bundler
+            }
+        ]
+    }
+}

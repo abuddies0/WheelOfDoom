@@ -1,151 +1,137 @@
-const canvas = document.getElementById("wheelCanvas");
-const ctx = canvas.getContext("2d");
+// @ts-check
+import { Wheel, WheelEntry } from './wheel.js'
+import { initializeDOMStuff, DOM_ELEMENTS } from './dom_stuff.js'
+import { updateWheelJSON } from "./update.js";
 
-// Wheel Entries
-const tableBody = document.querySelector("#wheelEntryTable tbody");
-const tagFiltersDiv = document.getElementById("tagFilters");
-const textModeSwitch = document.getElementById("textModeSwitch");
-const textModeArea = document.getElementById("textModeArea");
-const shuffleBtn = document.getElementById("shuffleBtn");
-const wheelEntriesCountSpan = document.getElementById("wheelEntriesCount");
 
-// General toolbar buttons
-const newWheelBtn = document.getElementById("newWheelBtn");
-const saveWheelBtn = document.getElementById("saveWheelBtn");
-const saveAsWheelBtn = document.getElementById("saveAsWheelBtn");
-const loadWheelBtn = document.getElementById("loadWheelBtn");
-const copyBtn = document.getElementById("copyBtn");
-const importFile = document.getElementById("importFile");
-const spinBtn = document.getElementById("spinBtn");
+/** @typedef {import("./update.js").SavedWheelEntry} SavedWheelEntry */
+/** @typedef {import("./update.js").WheelSettings} WheelSettings */
+/** @typedef {import("./update.js").SavedWheel} SavedWheel */
 
-// Modals
-const modal = document.getElementById("winnerModal");
-const winnerText = document.getElementById("winnerText");
-const closeModalBtn = document.getElementById("closeModalBtn");
 
-const settingsBtn = document.getElementById("settingsBtn");
-const settingsModal = document.getElementById("settingsModal");
-const closeSettingsBtn = document.getElementById("closeSettingsBtn");
-
-const confirmSaveAsBtn = document.getElementById("confirmSaveAsBtn");
-const cancelSaveAsBtn = document.getElementById("cancelSaveAsBtn");
-
-const savedWheelsList = document.getElementById("savedWheelsList");
-const closeLoadBtn = document.getElementById("closeLoadBtn");
-
-const saveModal = document.getElementById("saveModal");
-const loadModal = document.getElementById("loadModal");
-
-const saveNameInput = document.getElementById("saveNameInput");
-const loadList = document.getElementById("loadList");
-
-cancelSaveAsBtn.onclick = () => saveModal.classList.add("hidden");
-closeLoadBtn.onclick = () => loadModal.classList.add("hidden");
-
-// Wheel Settings
-const spinStrengthSlider = document.getElementById("spinStrengthSlider");
-const spinStrengthNumber = document.getElementById("spinStrengthNumber");
-const spinDurationSlider = document.getElementById("spinDurationSlider");
-const spinDurationNumber = document.getElementById("spinDurationNumber");
-const colorSchemeSelect = document.getElementById("colorSchemeSelect");
-const spinSoundSelect = document.getElementById("spinSoundSelect");
-const victorySoundSelect = document.getElementById("victorySoundSelect");
-let settings = {
-    spinStrength: 12,
-    spinDuration: 3.5, // seconds
-    colorScheme: "classic",
-    spinSound: "metalpipe",
-    victorySound: "yippee"
-};
-
-let spinSound = new Audio("asset/sound/metal_pipe.mp3");
-spinSound.loop = true; // keep looping while spinning
-const spinSounds = {
-    metalpipe: "asset/sound/metal_pipe.mp3",
-    silence: "asset/sound/silence.mp3"
-}
-
-let victorySound = new Audio("asset/sound/yippee.mp3");
-spinSound.volume = 0.1;
-victorySound.volume = 0.2;
-const victorySounds = {
-    yippee: "asset/sound/yippee.mp3",
-    silence: "asset/sound/silence.mp3"
-}
-
-// Entry Settings
+/** @type {boolean} True if editing entries through text */
 let textModeActive = false;
+/** @type {Record<string, Wheel>} A dictionary of all cached (saved) wheels. Is refreshed upon save. */
+let cachedWheels = {};
+/** @type {Array<Wheel>} All the wheels on screen. The first wheel in the list is the one being edited on the left */
+let wheels = new Array();
+/** @type {Wheel|null} The wheel that is currently being edited. */
+let editingWheel = null;
 
-// Wheel(s) Data
-let currentWheel = null;
-let diameter = 650;
-let radius = diameter / 2;
-let angle = 0;
-let spinning = false;
 
-let wheelEntries = [];
-let enabledTags = new Set();
-let knownTags = new Set();
 
-let riggedTarget = null;
-let riggedAmount = 0;
+
+/* ---------------- Wheel Caching ---------------- */
+
+/**
+ * Goes through the saved wheels and caches them all.
+ * The expectation is that this is called asyncronously.
+ */
+async function cacheSavedWheels() {
+    cachedWheels = {};
+    const savedJSONs = getSavedWheels();
+    for (const [wheelName, json] of Object.entries(savedJSONs)) {
+        cachedWheels[wheelName] = Wheel.fromJSON(json, false);
+    }
+    Wheel.CACHED_WHEELS = cachedWheels;
+}
 
 
 
 
 /* ---------------- Wheel Entries ---------------- */
 
-function addWheelEntry(data = { tags: "", weight: 1, text: "" }) {
-    wheelEntries.push(data);
+/**
+ * Adds the given wheel entry (to the primary wheel by default (index 0))
+ * @param {WheelEntry} wheelEntry The data to add as a wheel entry
+ * @param {Wheel|null} wheel The wheel to add the entry to
+ */
+function addWheelEntry(wheelEntry=new WheelEntry("", 1, new Array()), wheel=null) {
+    if (wheel == null && editingWheel != null) {
+        editingWheel.addEntry(wheelEntry);
+    }
+    else if (wheel != null) {
+        wheel.addEntry(wheelEntry);
+    }
     rebuildTable();
-    // Returns the newest wheelEntry (the last one)
-    return tableBody.lastChild;
 }
 
-function rebuildTable() {
-    tableBody.innerHTML = "";
 
-    wheelEntries.forEach((wheelEntry, i) => {
+/**
+ * Rebuilds the table with all elements present in the editing wheel.
+ */
+function rebuildTable() {
+    // Make sure all things we care about are not null
+    if (DOM_ELEMENTS.tableBody == null || editingWheel == null) {
+        return;
+    }
+    // Wipe the table
+    DOM_ELEMENTS.tableBody.innerHTML = "";
+
+    editingWheel.getWheelEntries().forEach((wheelEntry, i) => {
+        // Make a new row for each wheel entry
         const tr = document.createElement("tr");
 
         tr.innerHTML = `
-            <td><input class="textEntry" value="${wheelEntry.text}"></td>
-            <td><input class="weightEntry" type="number" min="1" value="${wheelEntry.weight}"></td>
-            <td><input class="tagEntry" value="${wheelEntry.tags}"></td>
+            <td><input class="textEntry" value="${wheelEntry.getValue()}"></td>
+            <td><input class="weightEntry" type="number" min="1" value="${wheelEntry.getWeight()}"></td>
+            <td><input class="tagEntry" value="${wheelEntry.getTags()}"></td>
             <td><button class="deleteEntryBtn" data-i="${i}">✕</button></td>
         `;
 
+        const wheelEntryCell = tr.children[0].firstChild;
+        const weightCell = tr.children[1].firstChild;
+        const tagsCell = tr.children[2].firstChild;
+        if (wheelEntryCell == null || !(wheelEntryCell instanceof HTMLInputElement)) { return; }
+        if (weightCell == null || !(weightCell instanceof HTMLInputElement)) { return; }
+        if (tagsCell == null || !(tagsCell instanceof HTMLInputElement)) { return; }
+
+        // textEntry, weightEntry, tagEntry
         tr.querySelectorAll("input").forEach(inp => {
             inp.oninput = () => {
-                wheelEntry.text = tr.children[0].firstChild.value;
-                wheelEntry.weight = +tr.children[1].firstChild.value || 1;
-                wheelEntry.tags = tr.children[2].firstChild.value;
+                // Typescript doesn't understand my genius (because I'm editing DOM using string above...)
+                wheelEntry.setValue(wheelEntryCell.value || "");
+                wheelEntry.setWeight(Number(weightCell.value) || 1);
+                wheelEntry.setTags(tagsCell.value ? tagsCell.value.split(",").map(t => t.trim()) : new Array());
 
+                if (editingWheel != null) { editingWheel.updateEntries(editingWheel.enabledTags); }
                 updateTagFilters();
-                saveState();
-                drawWheel();
             };
         });
 
+        // Delete button
+        // Typescript doesn't understand my genius (because I'm editing DOM using string above...)
+        // @ts-ignore
         tr.querySelector("button").onclick = () => {
-            wheelEntries.splice(i, 1);
+            if (editingWheel == null) { return; }
+            editingWheel.removeEntry(wheelEntry);
             rebuildTable();
         };
 
-        const wheelEntryInput = tr.children[2].firstChild;
-
-        wheelEntryInput.addEventListener("keydown", e => {
+        // Whenever <Enter> is pressed, it makes a new element
+        wheelEntryCell.addEventListener("keydown", e => {
+            // Typescript why
+            if (!(e instanceof KeyboardEvent)) { return; }
             if (e.key === "Enter") {
                 e.preventDefault();
                 const newWheelEntry = addWheelEntry();
-                newWheelEntry.childNodes[1].firstChild.focus();
+
+                if (DOM_ELEMENTS.tableBody == null || 
+                    DOM_ELEMENTS.tableBody.lastChild == null ||
+                    !(DOM_ELEMENTS.tableBody.lastChild instanceof HTMLElement))
+                {
+                    return;
+                }
+                DOM_ELEMENTS.tableBody.lastChild.focus();
             }
         });
 
         // Multiline pasting
-        wheelEntryInput.addEventListener("paste", e => {
-            const text = e.clipboardData.getData("text");
+        wheelEntryCell.addEventListener("paste", e => {
+            if (!(e instanceof ClipboardEvent)) { return; }
+            if (e.clipboardData == null) { return; }
 
+            const text = e.clipboardData.getData("text");
             // only special-handle multiline paste
             if (!text.includes("\n")) return;
 
@@ -159,99 +145,75 @@ function rebuildTable() {
             if (!lines.length) return;
 
             // replace current row text
-            wheelEntry.text = lines[0];
-            wheelEntryInput.value = lines[0];
+            wheelEntry.setValue(lines[0]);
+            wheelEntryCell.value = lines[0];
 
             // insert remaining as new entries
             const insertIndex = i + 1;
 
-            const newOnes = lines.slice(1).map(line => ({
-                tags: wheelEntry.tags,
-                weight: wheelEntry.weight,
-                text: line
-            }));
-
-            wheelEntries.splice(insertIndex, 0, ...newOnes);
+            const newOnes = lines.slice(1).map(line => {
+                const newWheelEntry = WheelEntry.fromText(line);
+                if (newWheelEntry != null) { if (editingWheel != null) editingWheel.addEntry(newWheelEntry); }
+            });
 
             rebuildTable();
         });
 
-        tableBody.appendChild(tr);
+        // Sometimes typescript hates me
+        if (DOM_ELEMENTS.tableBody == null) { return; }
+        DOM_ELEMENTS.tableBody.appendChild(tr);
     });
 
-    try {
-        if (wheelEntries != null) { updateTagFilters(); } 
-    } catch (e) {
-        console.log(e)
-    }
+    updateTagFilters();
     updateWheelEntriesCount();
     saveState();
-    drawWheel();
 
     makeTableDraggable();
 }
 
-// Helper: Convert wheelEntries -> textarea text
-function updateTextModeArea() {
-    const lines = wheelEntries.map(e =>
-        `${e.text} | ${e.weight} | ${e.tags}`
-    );
-    textModeArea.value = lines.join("\n");
+
+/***
+ * Populates the textModeArea with all editing wheel entries
+ */
+function populateTextModeArea() {
+    if (editingWheel == null || DOM_ELEMENTS.textModeArea == null) { return; }
+    if (!(DOM_ELEMENTS.textModeArea instanceof HTMLTextAreaElement)) { return; }
+    const lines = editingWheel.getWheelEntries().map(wheelEntry => {
+        return wheelEntry.toText();
+    });
+    DOM_ELEMENTS.textModeArea.value = lines.join("\n");
 }
 
-// Helper: Convert textarea text -> wheelEntries
-function parseTextModeArea() {
-    const lines = textModeArea.value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+/**
+ * This overwrites all existing wheel entries with the text area entries.
+ */
+function convertTextModeAreaToWheelEntries() {
+    if (DOM_ELEMENTS.textModeArea == null || !(DOM_ELEMENTS.textModeArea instanceof HTMLTextAreaElement)) { return; }
+    if (editingWheel == null) { return null; }
+    const lines = DOM_ELEMENTS.textModeArea.value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     const newEntries = lines.map(line => {
         const parts = line.split("|").map(p => p.trim());
-        return {
-            text: parts[0] || "",
-            weight: +parts[1] || 1,
-            tags: parts[2] || ""
-        };
+        return new WheelEntry(
+            parts.length >= 1 ? parts[0] : "",
+            parts.length >= 2 ? Number(parts[1]) || 1 : 1,
+            parts.length >= 3 ? parts[2].split(",") : new Array()
+        );
     });
-    wheelEntries = newEntries;
+    editingWheel.setEntries(newEntries);
     rebuildTable();
-    updateTagFilters();
     saveState();
-    drawWheel();
 }
 
-// Toggle Text Mode
-textModeSwitch.onchange = () => {
-    textModeActive = textModeSwitch.checked;
 
-    if (textModeActive) {
-        tableBody.parentElement.classList.add("hidden"); // hide table container
-        textModeArea.classList.remove("hidden");
-        updateTextModeArea();
-    } else {
-        tableBody.parentElement.classList.remove("hidden");
-        textModeArea.classList.add("hidden");
-        parseTextModeArea(); // sync back into table
-    }
-};
-
-// Autosave while typing
-textModeArea.addEventListener("input", () => {
-    parseTextModeArea();
-});
-
-
-shuffleBtn.onclick = () => {
-    for (let i = wheelEntries.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [wheelEntries[i], wheelEntries[j]] = [wheelEntries[j], wheelEntries[i]];
-    }
-    rebuildTable();
-    saveState();
-    showCard("Shuffled!", 1);
-};
-
+/**
+ * Makes all elements in the wheel entries table draggable.
+ */
 function makeTableDraggable() {
+    /** @type {null|number} */
     let draggedIndex = null;
 
-    tableBody.querySelectorAll("tr").forEach((tr, i) => {
+    if (DOM_ELEMENTS.tableBody == null) { return; }
+    DOM_ELEMENTS.tableBody.querySelectorAll("tr").forEach((tr, i) => {
         tr.draggable = true;
 
         tr.addEventListener("dragstart", e => {
@@ -277,539 +239,142 @@ function makeTableDraggable() {
             e.preventDefault();
             tr.style.borderTop = "";
 
-            if (draggedIndex === null || draggedIndex === i) return;
+            if (draggedIndex === null || draggedIndex === i || editingWheel == null) return;
 
-            const movedItem = wheelEntries.splice(draggedIndex, 1)[0];
-            wheelEntries.splice(i, 0, movedItem);
+            editingWheel.moveWheelEntry(draggedIndex, i);
 
             rebuildTable();
-            saveState();
         });
     });
 }
 
+
+/**
+ * Updates the counts at the top of the entry table
+ */
 function updateWheelEntriesCount() {
-    const totalWheelEntries = wheelEntries.length;
-    const totalWeight = wheelEntries.reduce((sum, e) => sum + (+e.weight || 1), 0);
-    wheelEntriesCountSpan.textContent = `${totalWheelEntries}, ${totalWeight}`;
+    if (editingWheel == null || DOM_ELEMENTS.wheelEntriesCountSpan == null) { return; }
+    const totalWheelEntries = editingWheel.enabledWheelEntries.length;
+    const totalWeight = editingWheel.totalWeight;
+    DOM_ELEMENTS.wheelEntriesCountSpan.textContent = `${totalWheelEntries}, ${totalWeight}`;
+    saveState();
 }
 
 /* ---------------- Tags ---------------- */
 
+/**
+ * This updates the tags of the currently editing wheel
+ */
 function updateTagFilters() {
-    const allTags = new Set();
+    if (editingWheel == null || DOM_ELEMENTS.tagFiltersDiv == null) { return null; }
+    editingWheel.updateTags();
 
-    wheelEntries.forEach(r =>
-        r.tags.split(",")
-            .map(t => t.trim())
-            .filter(Boolean)
-            .forEach(t => allTags.add(t))
-    );
+    DOM_ELEMENTS.tagFiltersDiv.innerHTML = "";
 
-    // remove tags that no longer exist
-    [...enabledTags].forEach(t => {
-        if (!allTags.has(t)) enabledTags.delete(t);
-    });
-
-    [...knownTags].forEach(t => {
-        if (!allTags.has(t)) knownTags.delete(t);
-    });
-
-    // enable only *new* tags
-    allTags.forEach(t => {
-        if (!knownTags.has(t)) {
-            enabledTags.add(t);
-            knownTags.add(t);
-        }
-    });
-
-    tagFiltersDiv.innerHTML = "";
-
-    allTags.forEach(tag => {
+    editingWheel.tags.forEach(tag => {
+        if (editingWheel == null) { return; }
         const div = document.createElement("div");
         div.className = "tagToggle";
 
-        if (enabledTags.has(tag)) {
+        if (editingWheel.enabledTags.has(tag)) {
             div.classList.add("active");
         }
 
         div.textContent = tag;
 
         div.onclick = () => {
+            if (editingWheel == null) { return; }
             div.classList.toggle("active");
-
-            if (enabledTags.has(tag)) enabledTags.delete(tag);
-            else enabledTags.add(tag);
-
-            drawWheel();
-            saveState();
+            editingWheel.toggleTag(div.textContent);
+            updateWheelEntriesCount();
         };
 
-        tagFiltersDiv.appendChild(div);
-    });
-}
-
-/* ---------------- Active WheelEntrys ---------------- */
-
-function getActiveWheelEntrys() {
-    // Return wheelEntries as {text, weight} objects, filtered by enabled tags
-    return wheelEntries
-        .filter(wheelEntry => {
-            const tags = wheelEntry.tags.split(",").map(t => t.trim());
-            return !tags.length || tags.some(t => enabledTags.has(t) || t=="");
-        })
-        .map(wheelEntry => ({ text: wheelEntry.text, weight: +wheelEntry.weight || 1 }));
-}
-/* ---------------- Drawing ---------------- */
-
-function getTotalWeight() {
-    const wheelEntries = getActiveWheelEntrys();
-
-    let totalWeight = 0;
-    for (const wheelEntry of wheelEntries) {
-        totalWeight += wheelEntry["weight"];
-    }
-
-    return totalWeight;
-}
-
-function drawWheel() {
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-
-    const wheelEntries = getActiveWheelEntrys();
-
-    const palettes = {
-        classic: i => `hsl(${i * 360 / wheelEntries.length},70%,55%)`,
-        cool: i => `hsl(${200 + i * 40 / wheelEntries.length},70%,55%)`,
-        dark: i => `hsl(220,15%,${35 + i * 15 / wheelEntries.length}%)`,
-        warm: i => `hsl(${20 + i * 40 / wheelEntries.length},75%,55%)`
-    };
-
-    const colorFn = palettes[settings.colorScheme] || palettes.classic;
-
-    if (!wheelEntries.length) return;
-
-    const totalWeight = getTotalWeight();
-
-    const slicePerWeight = Math.PI * 2 / totalWeight;
-
-    ctx.save();
-    ctx.translate(radius, radius);
-    ctx.rotate(angle);
-
-    let start = Math.PI * 2;
-
-    wheelEntries.forEach((wheelEntry, i) => {
-
-        const weight = wheelEntry["weight"];
-        const text = wheelEntry["text"]
-
-        ctx.beginPath();
-        ctx.moveTo(0,0);
-        ctx.arc(0,0,radius,start-slicePerWeight*weight,start);
-        ctx.fillStyle = colorFn(i);
-        ctx.fill();
-
-        ctx.save();
-        ctx.rotate(start - (slicePerWeight*weight)/2);
-
-        let size = 22;
-        ctx.font = `${size}px system-ui`;
-        let textMeasure = ctx.measureText(text);
-        const arcLength = (slicePerWeight*weight) * 325;
-        while ((textMeasure.width > radius*0.55 || textMeasure.fontBoundingBoxAscent > arcLength) && size > 6) {
-            size--;
-            ctx.font = `${size}px system-ui`;
-            textMeasure = ctx.measureText(text);
-        }
-
-        ctx.fillStyle = "#111";
-        if (size > 18) {
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.translate(radius*0.6,0);
-        } else {
-            ctx.textAlign = "right";
-            ctx.textBaseline = "middle";
-            ctx.translate(radius*0.99,0);
-        }
-    
-        
-        ctx.fillText(text,0,0);
-
-        ctx.restore();
-
-        start -= slicePerWeight*weight;
+        if (DOM_ELEMENTS.tagFiltersDiv == null) { return; }
+        DOM_ELEMENTS.tagFiltersDiv.appendChild(div);
     });
 
-    ctx.restore();
+    editingWheel.updateEntries(editingWheel.enabledTags);
+    saveState();
 }
 
-/* ---------------- Spin ---------------- */
-
-function spin() {
-    if (spinning) return;
-
-    spinning = true;
-    spinSound.currentTime = 0; // start from beginning
-    spinSound.play();
-
-    // Decide the winner (to make sure it's fully random each time)
-    const winner = pullWeightedWheelEntry();
-
-    const slicePerWeight = Math.PI * 2 / getTotalWeight();
-    const currentWeightPos = (angle % (2*Math.PI)) / slicePerWeight;
-
-    const start = angle % (2 * Math.PI);
-    let total =
-        (winner["weight"] * slicePerWeight) - start +
-        2*Math.PI * Math.floor(settings.spinStrength);
-    if (total < 0) { total += 2*Math.PI; }
-
-    const duration = settings.spinDuration * 1000;
-
-    let startTime;
-
-    function frame(t) {
-        if (!startTime) startTime = t;
-
-        const p = Math.min((t-startTime)/duration,1);
-        angle = start + total*(1-Math.pow(1-p,3));
-
-        drawWheel();
-
-        if (p < 1) requestAnimationFrame(frame);
-        else {
-            spinning = false;
-            spinSound.pause();
-            victorySound.currentTime = 0;
-            victorySound.play();
-            showWinner(winner["wheelEntry"]);
-        }
-    }
-
-    requestAnimationFrame(frame);
-}
 
 /**
- * The forces the wheel to land on {riggedTarget} for {riggedAmount} times.
- * Prints out a message depending on if the target was found.
- * @param {string} rigTarget The target to land on
- * @param {number} numberOfRiggedSpins The number of times to land on the target (default=1)
+ * Spins all necessary wheels
  */
-function rig(rigTarget, numberOfRiggedSpins=1) {
-    if (getActiveWheelEntrys().map(entry => entry.text).includes(rigTarget)) {
-        riggedTarget = rigTarget;
-        riggedAmount = numberOfRiggedSpins;
-        console.log(`Successfully rigged the wheel to get '${rigTarget}' ${numberOfRiggedSpins} time${numberOfRiggedSpins > 1 ? "s" : ""}!`);
-    }
-    else {
-        console.log(`Failed to rig: could not find entry with the name ${rigTarget}.`);
-    }
+function spin() {
+    clearSubWheels();
+    if (editingWheel == null) { return; }
+    editingWheel.spin(Date.now());
 }
 
-function getPointerWheelEntry() {
-    const wheelEntries = getActiveWheelEntrys();
-    const slicePerWeight = Math.PI * 2 / getTotalWeight();
-    let currentWeightPos = (angle % (2*Math.PI)) / slicePerWeight;
-    for (const wheelEntry of wheelEntries) {
-        currentWeightPos -= wheelEntry["weight"];
-        if (currentWeightPos <= 0) {
-            return;
-        }
+
+/* ---------------- Drawing ---------------- */
+
+/**
+ * Draws all of the wheels
+ */
+function update() {
+    const startTime = performance.now();
+
+    // TODO: Make this use requestAnimationFrame()
+    let doneSpinning = true;
+    for (const wheel of wheels) {
+        wheel.update(Date.now());
+        doneSpinning = doneSpinning && wheel.isDoneSpinning();
     }
-}
-
-function pullWeightedWheelEntry() {
-    const wheelEntries = getActiveWheelEntrys();
-
-    // Account for rigging
-    if (riggedAmount > 0 && wheelEntries.map(entry => entry.text).includes(riggedTarget)) {
-        riggedAmount--;
-        let t = getEntryByName(riggedTarget);
-        let weight = 0;
-        for (const wheelEntry of wheelEntries) {
-            if (wheelEntry == t) {
-                break;
+    if (doneSpinning) {
+        // Now gotta check for subwheels
+        let needsSubSpin = false;
+        for (const wheel of wheels) {
+            if (wheel.requiresSubSpins()) {
+                needsSubSpin = true;
+                for (const subWheel of Object.values(wheel.subWheels)) {
+                    wheels.push(subWheel);
+                }
+                wheel.setNeedsSubSpins(false)
             }
-            weight += wheelEntry.weight;
         }
-        return {weight: weight, wheelEntry: t}
-    }
-
-    // Failed to rig
-    const totalWeight = getTotalWeight();
-
-    const winningWeight = totalWeight * Math.random();
-    let tempWeight = winningWeight;
-
-    for (const wheelEntry of wheelEntries) {
-        tempWeight -= wheelEntry["weight"];
-        if (tempWeight <= 0) {
-            return {weight: winningWeight, wheelEntry: wheelEntry};
+        if (needsSubSpin) {
+            restructureWheels();
+            for (const wheel of wheels) {
+                if (!wheel.hasResult) { wheel.spin(Date.now()); }
+            }
+        }
+        else {
+            showWinner()
+            for (const wheel of wheels) {
+                wheel.resultHandled();
+            }
         }
     }
-}
 
-function showWinner(winningWheelEntry) {
-    winnerText.textContent = winningWheelEntry["text"];
-    modal.classList.remove("hidden");
-}
-
-function getEntryByName(name) {
-    const entries = getActiveWheelEntrys();
-    for (const entry of entries) {
-        if (entry.text == name) {
-            return entry;
-        }
+    if (DOM_ELEMENTS.fpsCounter != null) {
+        DOM_ELEMENTS.fpsCounter.textContent = String(Math.min(1000, Math.round(1000.0 / (performance.now() - startTime))));
     }
-    return null;
 }
 
-closeModalBtn.onclick = () => {
-    modal.classList.add("hidden");
-};
 
-settingsBtn.onclick = () => {
-    settingsModal.classList.remove("hidden");
-
-    spinStrengthSlider.value = settings.spinStrength;
-    spinStrengthNumber.value = settings.spinStrength;
-
-    spinDurationSlider.value = settings.spinDuration;
-    spinDurationNumber.value = settings.spinDuration;
-
-    colorSchemeSelect.value = settings.colorScheme;
-    spinSoundSelect.value = settings.spinSound;
-    victorySoundSelect.value = settings.victorySound;
-};
-
-closeSettingsBtn.onclick = () => {
-    settingsModal.classList.add("hidden");
-};
-
-canvas.onclick = spin;
-spinBtn.onclick = spin;
-
-/* ---------------- Import / Export ---------------- */
-
-exportBtn.onclick = () => {
-    const blob = new Blob(
-        [JSON.stringify(getWheelData(), null, 2)],
-        { type: "application/json" }
-    );
-
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "wheel.json";
-    a.click();
-
-    URL.revokeObjectURL(a.href);
-
-    showCard("Exported!", 3);
-};
-
-importBtn.onclick = () => importFile.click();
-
-importFile.onchange = e => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-
-    reader.onload = () => {
-        try {
-            const data = JSON.parse(reader.result);
-            loadWheelData(data); // use the proper loader
-            showCard(`Imported ${file.name}`, 3);
-        } catch(err) {
-            console.error(err);
-            showCard("Failed to import file", 3);
-        }
-    };
-
-    reader.readAsText(file);
-};
-
-copyBtn.onclick = () => {
-    navigator.clipboard.writeText(JSON.stringify(wheelEntries));
-    showCard("Copied JSON 👍", 2);
-};
-
-function saveAs() {
-    saveNameInput.value = currentWheel || "";
-    saveModal.classList.remove("hidden");
-    saveNameInput.focus();
-}
-
-confirmSaveAsBtn.onclick = () => {
-    const name = saveNameInput.value.trim();
-    if (!name) return;
-
-    const wheels = getWheels();
-
-    wheels[name] = getWheelData();
-
-    currentWheel = name;
-    setWheels(wheels);
-
-    saveModal.classList.add("hidden");
-    showCard("Saved Successfully!", 4);
-};
-
-cancelSaveAsBtn.onclick = () => saveModal.classList.add("hidden");
-
-saveWheelBtn.onclick = () => {
-    if (currentWheel == null) {
-        saveAs();
-        return;
-    }
-
-    const wheels = getWheels();
-    wheels[currentWheel] = getWheelData();
-
-    showCard("Saved!", 2)
-
-    setWheels(wheels);
-};
-
-saveAsWheelBtn.onclick = () => {
-    saveAs();
-};
-
-loadWheelBtn.onclick = () => {
-    loadModal.classList.remove("hidden");
-    rebuildLoadMenu();
-};
-
-function rebuildLoadMenu() {
-    loadList.innerHTML = "";
-
-    const wheels = getWheels();
-
-    Object.keys(wheels).forEach(name => {
-
-        const row = document.createElement("div");
-        row.className = "wheelRow";
-
-        const title = document.createElement("div");
-        title.className = "wheelName";
-        title.textContent = name;
-
-        const btns = document.createElement("div");
-        btns.className = "wheelBtns";
-
-        const loadBtn = document.createElement("button");
-        loadBtn.className = "primaryBtn";
-        loadBtn.textContent = "Load";
-        loadBtn.onclick = () => {
-            loadWheel(name);
-            loadModal.classList.add("hidden");
-            showCard("Wheel Loaded", 3);
-        };
-
-        const delBtn = document.createElement("button");
-        delBtn.className = "deleteBtn";
-        delBtn.textContent = "Delete";
-        delBtn.onclick = () => {
-            if (!confirm(`Delete "${name}"?`)) return;
-
-            const wheels = getWheels();
-            delete wheels[name];
-            setWheels(wheels);
-
-            rebuildLoadMenu();
-            showCard("Deleted", 3);
-        };
-
-        btns.append(loadBtn, delBtn);
-        row.append(title, btns);
-        loadList.append(row);
-    });
-}
-
-function loadWheel(name) {
-    const wheels = getWheels();
-    if (!wheels[name]) {
-        showCard(`Wheel "${name}" not found!`, 3);
-        return;
-    }
-
-    currentWheel = name;
-    loadWheelData(wheels[name]);
-    showCard(`Wheel "${name}" loaded!`, 3);
-}
-
-newWheelBtn.onclick = () => {
-    loadWheelData({}); 
-    showCard("Made New Wheel!", 2);
-}
-
-/* ------------ WHEEL SETTINGS ------------ */
-function applyWheelSize(size) {
-    canvas.width = size;
-    canvas.height = size;
-
-    document.querySelector(".wheel-wrapper").style.width = size + "px";
-    document.querySelector(".wheel-wrapper").style.height = size + "px";
-
-    radius = size / 2;
-
-    drawWheel();
-}
-
-function syncSpinStrength(val) {
-    settings.spinStrength = +val;
-    spinStrengthSlider.value = val;
-    spinStrengthNumber.value = val;
-    saveState();
-}
-
-spinStrengthSlider.oninput = e =>
-    syncSpinStrength(e.target.value);
-
-spinStrengthNumber.oninput = e =>
-    syncSpinStrength(e.target.value);
-
-
-function syncSpinDuration(val) {
-    settings.spinDuration = +val;
-    spinDurationSlider.value = val;
-    spinDurationNumber.value = val;
-    saveState();
-}
-
-spinDurationSlider.oninput = e =>
-    syncSpinDuration(e.target.value);
-
-spinDurationNumber.oninput = e =>
-    syncSpinDuration(e.target.value);
-
-colorSchemeSelect.onchange = e => {
-    settings.colorScheme = e.target.value;
-    drawWheel();
-};
-
-spinSoundSelect.onchange = e => {
-    settings.spinSound = e.target.value;
-    spinSound.pause();
-    spinSound = new Audio(spinSounds[settings.spinSound]);
-    spinSound.loop = true;
-    spinSound.volume = 0.1;
-}
-
-victorySoundSelect.onchange = e => {
-    settings.victorySound = e.target.value;
-    victorySound.pause();
-    victorySound = new Audio(victorySounds[settings.victorySound]);
-    victorySound.volume = 0.2;
+/**
+ * Brings up the winning entry card for the primary wheel
+ */
+function showWinner() {
+    if (DOM_ELEMENTS.winnerText == null || DOM_ELEMENTS.modal == null || editingWheel == null) { return; }
+    const winningWheelText = editingWheel.getWinningWheelText();
+    DOM_ELEMENTS.winnerText.textContent = winningWheelText || "";
+    DOM_ELEMENTS.modal.classList.remove("hidden");
 }
 
 
 /* ------------- Utilities ------------- */
 const cardContainer = document.getElementById("cardContainer");
 
-function showCard(msg, seconds = 3) {
+/**
+ * Makes a "toast" card at the top of the screen showing msg for a short duration
+ * @param {string} msg The message to be displayed 
+ * @param {number} seconds The lifespan of the card in seconds (default is 3)
+ */
+export function showCard(msg, seconds = 3) {
+    if (cardContainer == null) { return; }
     const card = document.createElement("div");
     card.className = "toastCard";
     card.textContent = msg;
@@ -831,69 +396,261 @@ function showCard(msg, seconds = 3) {
 }
 
 
+/* ----------------- Sub Wheels ---------------- */
+
+/**
+ * Restructures all wheels in a branch structure.
+ */
+function restructureWheels() {
+    if (DOM_ELEMENTS.wheelWrapper == null) { return; }
+    // Format is...
+    // each wheel has height of (MAX_VERT_SPACE / SUB_LEVELS)
+    // each wheel has width to fit all wheels of that sub level in a line
+    // Is this really slow and awful? Yes. But- it's funny.
+    let subLevels = 0;
+    for (const wheel of wheels) {
+        if (wheel.getSubLevel() > subLevels) {
+            subLevels = wheel.subLevel;
+        }
+    }
+
+    const maxHeight = DOM_ELEMENTS.wheelWrapper.clientHeight;
+    const wheelHeight = maxHeight / (subLevels+1);
+
+    // Settings button (always there)
+    let html = `<button id="settingsBtn" class="settings-btn">⚙</button>\n`;
+    html += `<canvas id="wheel-connections" width="650" height="650"></canvas>\n`;
+    // Build canvases row-by-row
+    let i = 0;
+    for (let level = 0; level <= subLevels; level++) {
+        // html += `<div class="wheel-row" style="height=${wheelHeight};left=0;top=${wheelHeight*level};">\n`;
+        html += `<div class="wheel-row" style="height=${wheelHeight};">\n`;
+        for (const wheel of wheels) {
+            if (wheel.getSubLevel() != level) {
+                continue;
+            }
+            // We now know that the sublevel is correct
+            // TODO: Fix this for large recursions
+            const canvasID = "wheel_" + i;
+            wheel.setCanvasID(canvasID);
+            html += `<canvas id="${canvasID}" class="wheel-canvas" height="${wheelHeight}" width="${wheelHeight}"></canvas>\n`;
+            i++;
+        }
+        html += `</div>`;
+    }
+    DOM_ELEMENTS.wheelWrapper.innerHTML = html;
+
+    // Now we gotta go set all the canvases
+    // TODO: Make this actually wait until the DOM elements are loaded, then just do it instantly
+    setTimeout(() => {
+        for (const wheel of wheels) {
+            wheel.setCanvasFromID();
+            wheel.makeBuffer();
+        }
+        // Next up, draw a bunch of lines between them all
+        const wheelConnections = document.getElementById("wheel-connections");
+        if (wheelConnections == null || !(wheelConnections instanceof HTMLCanvasElement)) { return; }
+        const connectionsContext = wheelConnections.getContext("2d");
+        if (connectionsContext == null || !(connectionsContext instanceof CanvasRenderingContext2D)) { return; }
+        const ox = wheelConnections.getBoundingClientRect().left;
+        const oy = wheelConnections.getBoundingClientRect().top;
+        let parentRect, px, py, pr;
+        let childRect, cx, cy, cr;
+        let d, vx, vy;
+        let canvas, subCanvas;
+        connectionsContext.clearRect(0, 0, wheelConnections.width, wheelConnections.height);
+        for (const wheel of wheels) {
+            canvas = wheel.getCanvas();
+            if (canvas == null) { continue; }
+            parentRect = canvas.getBoundingClientRect();
+            px = parentRect.left + parentRect.width * 0.5;
+            py = parentRect.top + parentRect.height * 0.5;
+            pr = parentRect.width * 0.475;
+            for (const subWheel of Object.values(wheel.subWheels)) {
+                subCanvas = subWheel.getCanvas();
+                if (subCanvas == null) { continue; }
+                childRect = subCanvas.getBoundingClientRect();
+                cx = childRect.left + childRect.width * 0.5;
+                cy = childRect.top + childRect.height * 0.5;
+                cr = childRect.width * 0.475
+                // Math time to find the shortest path between them.
+                // Find normalized vector between them
+                vx = cx - px;
+                vy = cy - py;
+                d = Math.sqrt(vx*vx + vy*vy);
+                vx = vx / d;
+                vy = vy / d;
+                // Use the normal to find the shortest path
+                connectionsContext.save();
+                connectionsContext.beginPath();
+                connectionsContext.moveTo(px+vx*pr - ox, py+vy*pr - oy);
+                connectionsContext.lineTo(cx-vx*cr - ox, cy-vy*cr - oy);
+                connectionsContext.lineWidth = 0.5;
+                connectionsContext.strokeStyle = "red";
+                connectionsContext.stroke();
+                connectionsContext.restore();
+            }
+        }
+    }, 10);
+    
+}
+
+
+/**
+ * Removes all sub wheels and fixes the size
+ */
+function clearSubWheels() {
+    if (wheels.length == 1) {
+        return;
+    }
+
+    for (let i = 0; i < wheels.length; i++) {
+        if (wheels[i].isSubwheel()) {
+            // Remove wheel if it's a subwheel
+            wheels.splice(i, 1);
+            i--;
+        }
+        else {
+            wheels[i].clearSubwheels();
+        }
+    }
+
+    restructureWheels();
+}
+
+
 /* ---------------- Persistence ---------------- */
 
-function getWheels() {
+/**
+ * Tries to update all saved wheels
+ */
+function updateSavedWheels() {
+    const savedWheels = getSavedWheels();
+    for (const [key, json] of Object.entries(savedWheels)) {
+        const updatedJSON = updateWheelJSON(json, key);
+        if (updatedJSON != null) { savedWheels[key] = updatedJSON; }
+    }
+    setSavedWheels(savedWheels);
+}
+
+
+/**
+ * All the saved wheels in local cache
+ * @returns {Record<string, SavedWheel>} All the saved wheels in the local cache
+ */
+export function getSavedWheels() {
     return JSON.parse(localStorage.getItem("savedWheels") || "{}");
 }
 
-function setWheels(b) {
-    localStorage.setItem("savedWheels", JSON.stringify(b));
+
+/**
+ * Sets the saved wheels in local cache to the provided JSON
+ * @param {Object} json The JSON of all saved wheels
+ */
+export function setSavedWheels(json) {
+    localStorage.setItem("savedWheels", JSON.stringify(json));
 }
 
+/**
+ * Saves the current wheel to local cache
+ */
 function saveState() {
+    if (editingWheel == null) { return; }
     localStorage.setItem(
         "wheelState",
-        JSON.stringify(getWheelData())
+        JSON.stringify(editingWheel.toJSON())
     );
 }
 
+/**
+ * Clears the cache. Used only for debugging.
+ */
+function clearCache() {
+    localStorage.setItem("wheelState", "");
+}
+
+/**
+ * Loads the most recently used wheel.
+ * Also tries to update the wheel at the same time.
+ */
 function loadState() {
     const saved = localStorage.getItem("wheelState");
-    if (saved) {
-        loadWheelData(JSON.parse(saved));
+    if (saved && saved != "") {
+        const wheel = JSON.parse(saved);
+        const updatedWheel = updateWheelJSON(wheel);
+        if (updatedWheel != null) {
+            loadWheelData(updatedWheel);
+        }
+        else {
+            loadWheelData(wheel);
+        }
     }
 }
 
-function getWheelData() {
-    return {
-        wheelEntries,
-        enabledTags: [...enabledTags],
-        knownTags: [...knownTags],
-        settings
-    };
-}
-
-function loadWheelData(data) {
-    wheelEntries = data.wheelEntries || [{ tags: "fruit", weight: 1, text: "Apple" }];
-    enabledTags = new Set(data.enabledTags || []);
-    knownTags = new Set(data.knownTags || []);
-    settings = { ...settings, ...(data.settings || {}) };
-
-    spinStrengthSlider.value = settings.spinStrength;
-    spinStrengthNumber.value = settings.spinStrength;
-
-    spinDurationSlider.value = settings.spinDuration;
-    spinDurationNumber.value = settings.spinDuration;
-
-    colorSchemeSelect.value = settings.colorScheme;
-    spinSoundSelect.value = settings.spinSound;
-    victorySoundSelect.value = settings.victorySound;
-
+/**
+ * Loads the given JSON data into the currently editable wheel
+ * @param {import("./wheel.js").SavedWheel} json The data to load (typically gotten from Wheel.toJSON)
+ */
+export function loadWheelData(json) {
+    clearSubWheels();
+    if (editingWheel == null) {
+        editingWheel = Wheel.fromJSON(json, true);
+    }
+    else {
+        editingWheel.fromJSON(json)
+    }
+    if (DOM_ELEMENTS.canvas != null && DOM_ELEMENTS.canvas instanceof HTMLCanvasElement)
+        editingWheel.setCanvas(DOM_ELEMENTS.canvas);
     rebuildTable();
-    drawWheel();
 }
 
 
-/* ---------------- Init ---------------- */
-
+/* ---------------- Init/Main ---------------- */
 document.addEventListener("DOMContentLoaded", () => {
+    editingWheel = Wheel.baseWheel();
+    wheels.push(editingWheel)
+    // Update all cached wheels
+    updateSavedWheels();
+    // Attempt to load wheel from cache
     loadState();
+    initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels);
 
-    if (!wheelEntries.length) {
-        addWheelEntry({ tags: "fruit", weight: 1, text: "Apple" });
-        addWheelEntry({ tags: "fruit", weight: 1, text: "Banana" });
-    } else {
+    // Toggle Text Mode
+    if (DOM_ELEMENTS.textModeSwitch != null)
+    DOM_ELEMENTS.textModeSwitch.onchange = () => {
+        if (DOM_ELEMENTS.textModeSwitch == null ||
+            !(DOM_ELEMENTS.textModeSwitch instanceof HTMLInputElement) ||
+            DOM_ELEMENTS.tableBody == null ||
+            DOM_ELEMENTS.tableBody.parentElement == null ||
+            DOM_ELEMENTS.textModeArea == null
+        ) { return; }
+        textModeActive = DOM_ELEMENTS.textModeSwitch.checked;
+
+        if (textModeActive) {
+            DOM_ELEMENTS.tableBody.parentElement.classList.add("hidden"); // hide table container
+            DOM_ELEMENTS.textModeArea.classList.remove("hidden");
+            populateTextModeArea();
+        } else {
+            DOM_ELEMENTS.tableBody.parentElement.classList.remove("hidden");
+            DOM_ELEMENTS.textModeArea.classList.add("hidden");
+            convertTextModeAreaToWheelEntries(); // sync back into table
+        }
+    };
+
+    // Autosave while typing
+    if (DOM_ELEMENTS.textModeArea != null)
+    DOM_ELEMENTS.textModeArea.addEventListener("input", () => {
+        convertTextModeAreaToWheelEntries();
+    });
+
+    // Shuffle button
+    if (DOM_ELEMENTS.shuffleBtn != null)
+    DOM_ELEMENTS.shuffleBtn.onclick = () => {
+        if (editingWheel == null) { return; }
+        editingWheel.shuffleEntries();
         rebuildTable();
-    }
+        showCard("Shuffled!", 1);
+    };
+
+    setInterval(update, 10);
 });
