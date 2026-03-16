@@ -11,6 +11,7 @@
      textModeArea: document.getElementById("text-mode-area"),
      shuffleButton: document.getElementById("shuffle-button"),
      wheelEntriesCountSpan: document.getElementById("wheel-entries-count"),
+     wheelEntriesWeightSpan: document.getElementById("wheel-entries-count"),
 
     // General toolbar buttons
      newWheelButton: document.getElementById("new-wheel-button"),
@@ -1938,8 +1939,10 @@ function makeTableDraggable() {
 function updateWheelEntriesCount() {
     if (editingWheel == null || DOM_ELEMENTS.wheelEntriesCountSpan == null) { return; }
     const totalWheelEntries = editingWheel.enabledWheelEntries.length;
+    DOM_ELEMENTS.wheelEntriesCountSpan.textContent = totalWheelEntries.toString();
+    if (editingWheel == null || DOM_ELEMENTS.wheelEntriesWeightSpan == null) { return; }
     const totalWeight = editingWheel.totalWeight;
-    DOM_ELEMENTS.wheelEntriesCountSpan.textContent = `${totalWheelEntries}, ${totalWeight}`;
+    DOM_ELEMENTS.wheelEntriesWeightSpan.textContent = totalWeight.toString();
     saveState();
 }
 

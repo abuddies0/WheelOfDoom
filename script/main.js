@@ -255,8 +255,10 @@ function makeTableDraggable() {
 function updateWheelEntriesCount() {
     if (editingWheel == null || DOM_ELEMENTS.wheelEntriesCountSpan == null) { return; }
     const totalWheelEntries = editingWheel.enabledWheelEntries.length;
+    DOM_ELEMENTS.wheelEntriesCountSpan.textContent = totalWheelEntries.toString();
+    if (editingWheel == null || DOM_ELEMENTS.wheelEntriesWeightSpan == null) { return; }
     const totalWeight = editingWheel.totalWeight;
-    DOM_ELEMENTS.wheelEntriesCountSpan.textContent = `${totalWheelEntries}, ${totalWeight}`;
+    DOM_ELEMENTS.wheelEntriesWeightSpan.textContent = totalWeight.toString();
     saveState();
 }
 
