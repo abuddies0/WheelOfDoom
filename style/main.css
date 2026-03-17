@@ -38,8 +38,85 @@ body {
     aspect-ratio: 5/3;
 }
 
+.tooltip {
+    display: none;
+    position: absolute;
+    left: 100%;
+    bottom: 100%;
+    font-size: 12px;
+    color: #aaaaaa;
+    background-color: #222222;
+    border: 2px solid #2c2c2c;
+    border-radius: 4px;
+
+    padding: 4px;
+    margin: 2px;
+    z-index: 1000;
+
+    width: max(120px, 100%);
+    height: auto;
+}
+
+.has-tooltip:hover .tooltip {
+  display: block;
+}
+
+
+/*--------- WHEEL SELECT ----------------*/
+#wheel-select-area {
+    width: 240px;
+
+    display: grid;
+    grid-template-columns: auto;
+    grid-template-rows: 20px auto;
+
+    background: rgba(20, 20, 35, 0.75);
+    backdrop-filter: blur(14px);
+
+    border-radius: 16px;
+    padding: 16px;
+
+    box-shadow:
+        0 10px 40px rgba(0,0,0,0.6),
+        inset 0 0 0 1px rgba(120,140,255,0.15);
+}
+
+#wheel-select-toolbar {
+    display: grid;
+    grid-template-columns: auto auto 1fr auto auto;
+    border-bottom: 2px solid red;
+    padding-bottom: 20px;
+    height: 32px;
+    width: 100%;
+}
+
+.tool-button {
+    position: relative;
+    margin: 4px;
+    padding: 0px;
+    width: 24px;
+    height: 24px;
+    align-content: center;
+    justify-content: center;
+    background-color: transparent;
+    border-color: transparent;
+}
+
+.tool-button > span {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+#wheel-select-browser {
+
+}
+
+
 /*--------- GENERAL TOOLBAR -----------*/
-#generalToolbar {
+/*
+#general-toolbar {
     background: rgba(20, 20, 35, 0.75);
     backdrop-filter: blur(14px);
 
@@ -55,7 +132,7 @@ body {
         inset 0 0 0 1px rgba(120,140,255,0.15);
 }
 
-.toolBtn {
+.tool-button {
     background: linear-gradient(135deg, #2d2d55, #3a2f66);
     color: white;
 
@@ -74,58 +151,59 @@ body {
     transition: transform .12s ease, box-shadow .12s ease;
 }
 
-.toolBtn:hover {
+.tool-button:hover {
     transform: translateY(-1px);
     box-shadow: 0 6px 18px rgba(120,100,255,0.45);
 }
+*/
 
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 50px;
-  height: 26px;
+.entry-mode-select {
+    position: relative;
+    width: 64px;
+    height: 24px;
 }
 
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
+.entry-mode-select input {
+    opacity: 0;
+    width: 0;
+    height: 0;
 }
 
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-color: #dd0000;
-  transition: 0.4s;
-  border-radius: 34px;
+.entry-mode-text {
+    position: absolute;
+    cursor: pointer;
+    top: 0; 
+    left: 0; 
+    right: 0; 
+    bottom: 0;
+    transition: 0.4s;
 }
 
-.slider::before {
-  position: absolute;
-  content: "";
-  height: 20px; width: 20px;
-  left: 3px;
-  bottom: 3px;
-  background-color: white;
-  transition: 0.4s;
-  border-radius: 50%;
+.entry-mode-text::after {
+    font-weight: 400;
+    position: absolute;
+    content: "Table";
+    height: 24px;
+    width: 100%;
+    left: 0;
+    bottom: 0;
+
+    line-height: 24px;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+
+    background-color: rgb(60, 35, 70);
+    transition: 0.4s;
+    border-radius: 4px;
+    box-shadow:
+        0 10px 40px rgba(0,0,0,0.6),
+        inset 0 0 0 1px rgba(120,140,255,0.15);
 }
 
-.switch input:checked + .slider {
-  background-color: #4CAF50;
-}
-
-.switch input:checked + .slider::before {
-  transform: translateX(24px);
-}
-
-.slider.round {
-  border-radius: 34px;
-}
-
-.slider.round::before {
-  border-radius: 50%;
+.entry-mode-select input:checked + .entry-mode-text::after {
+    background-color: rgb(49, 36, 80);
+    content: "Text";
 }
 
 textarea {
@@ -168,7 +246,7 @@ button.primary:hover {
 
 /* ---------------- ENTRIES ---------------- */
 
-.wheelEntriesHeader {
+.wheel-entries-header {
     display: flex;
     align-items: center;
     align-self: center;
@@ -177,19 +255,19 @@ button.primary:hover {
     gap: 12px;
 }
 
-.wheelEntries {
+.wheel-entries {
     width: 300px;
     display: flex;
     flex-direction: column;
     gap: 14px;
 }
 
-.wheelEntries h1 {
+.wheel-entries h1 {
     margin: 0 0 8px;
     font-size: 28px;
 }
 
-.wheelEntries-container {
+.wheel-entries-container {
     width: 100%; /* Fixed width of the container */
     height: 450px; /* Fixed height of the container */
     overflow: auto; /* Adds scroll bars if content overflows */
@@ -199,7 +277,7 @@ button.primary:hover {
     padding: 5px;
 }
 
-.wheelEntriesToolbar {
+.wheel-entries-toolbar {
     display: flex;
     gap: 6px;
 }
@@ -224,7 +302,7 @@ input {
     padding: 4px;
 }
 
-.deleteEntryBtn {
+.delete-entry-button {
     height: 20px;
     width: 20px;
     justify-self: center;
@@ -237,25 +315,24 @@ input {
     background-color: #440000;
 }
 
-.deleteEntryBtn:hover{
+.delete-entry-button:hover{
     background-color: #880000;
 }
 
-.textModeToggle {
+.wheel-entries-header {
     position: relative;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 5px;
-    font-weight: bold;
-    font-size: 16px;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    column-gap: 10px;
+    margin-bottom: 12px;
+    height:24px;
 }
 
-#textModeToggleText {
+#text-mode-toggle-text {
     padding: 1px 5px;
 }
 
-#textModeArea {
+#text-mode-area {
     width: 100%;
     height: 400px;
     font-family: monospace;
@@ -264,50 +341,52 @@ input {
     box-sizing: border-box;
 }
 
-#shuffleBtn {
-    position: absolute;
-    right: -1px;
-    top: 0px;
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
+#shuffle-button {
+    margin-right: 4px;
+    background-color: transparent;
+    border-color: transparent;
+    position: relative;
+    width: 24px;
+    height: 24px;
     padding: 0px 0px;
     align-content: center;
     justify-content: center;
-    background-color: #9021da;
 }
 
-#wheelEntriesCount {
-    font-weight: 500;
-    font-size: 0.95rem;
+#wheel-entries-count-container {
+    display:grid;
+    grid-template-rows: auto auto;
+    font-weight: 300;
+    color: #aaaaaa;
+    font-size: 0.6rem;
 }
 
-.textEntry {
+.text-entry {
     font-size: 12px;
     /* width: 150%; */
 }
 
-.weightEntry {
+.weight-entry {
     font-size: 12px;
     text-align: center;
     /* margin: 0 50%;
     width: 50%; */
 }
 
-.tagEntry {
+.tag-entry {
     font-size: 10px;
     color: #cccccc;
 }
 
 /*-------------- TAGS ---------------*/
 
-#tagFilters {
+#tag-filters {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
 }
 
-.tagToggle {
+.tag-toggle {
     background: #2a2f3a;
     padding: 4px 8px;
     border-radius: 10px;
@@ -315,7 +394,7 @@ input {
     font-size: 12px;
 }
 
-.tagToggle.active {
+.tag-toggle.active {
     background: #6366f1;
 }
 
@@ -365,7 +444,7 @@ canvas {
     pointer-events: none;
 }
 
-.settings-btn {
+.settings-button {
     position: absolute;
     top: 10px;
     right: 10px;
@@ -382,13 +461,13 @@ canvas {
     background: #1f2333;
 }
 
-.settingsActions {
+.settings-actions {
     margin-top: 20px;
     display: flex;
     justify-content: flex-end;
 }
 
-.rangeGroup {
+.range-group {
     display: grid;
 
     grid-template-columns: 34px 1fr 34px 90px;
@@ -399,13 +478,13 @@ canvas {
     align-items: center;
 }
 
-.rangeGroup small {
+.range-group small {
     grid-column: 1 / -1;
     opacity: .65;
     font-size: 12px;
 }
 
-#settingsModal {
+#settings-modal {
     position: absolute;
 
     height: auto;
@@ -433,14 +512,14 @@ canvas {
     z-index: 200;
 }
 
-#settingsModal h2 {
+#settings-modal h2 {
     position: absolute;
     top: 10px;
     font-size: 2em;
 }
 
-#settingsModal select,
-#settingsModal input[type="number"] {
+#settings-modal select,
+#settings-modal input[type="number"] {
     background: #0f1224;
     color: #e5e7ff;
 
@@ -452,7 +531,7 @@ canvas {
     font-size: 14px;
 }
 
-#settingsModal input[type="range"] {
+#settings-modal input[type="range"] {
     grid-column: 2 / 3;
 
     appearance: none;
@@ -463,7 +542,7 @@ canvas {
     border-radius: 6px;
 }
 
-#settingsModal input[type="range"]::-webkit-slider-thumb {
+#settings-modal input[type="range"]::-webkit-slider-thumb {
     appearance: none;
 
     width: 18px;
@@ -478,7 +557,7 @@ canvas {
     cursor: pointer;
 }
 
-.settingsActions {
+.settings-actions {
     display: flex;
     justify-content: flex-end;
 }
@@ -506,7 +585,7 @@ canvas {
     display: none !important;
 }
 
-.modalCard {
+.modal-card {
     background: #121212;
     border-radius: 16px;
     padding: 26px 30px;
@@ -515,31 +594,31 @@ canvas {
     animation: pop .2s ease;
 }
 
-.modalCard h2 {
+.modal-card h2 {
     margin: 0 0 18px;
     font-size: 1.7rem;
     font-weight: 700;
 }
 
-.modalLabel {
+.modal-label {
     display: block;
     font-size: .9rem;
     opacity: .75;
     margin-bottom: 6px;
 }
 
-.modalInput:focus {
+.modal-input:focus {
     box-shadow: 0 0 0 2px #5aa9ff;
 }
 
-.modalActions {
+.modal-actions {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
     margin-top: 22px;
 }
 
-.primaryBtn {
+.primary-button {
     background: linear-gradient(135deg,#5aa9ff,#7f6cff);
     border: none;
     border-radius: 10px;
@@ -548,7 +627,7 @@ canvas {
     cursor: pointer;
 }
 
-.secondaryBtn {
+.secondary-button {
     background: #222;
     border: 1px solid #333;
     border-radius: 10px;
@@ -558,7 +637,7 @@ canvas {
 
 /* LOAD LIST */
 
-.boardList {
+.board-list {
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -566,7 +645,7 @@ canvas {
     overflow-y: auto;
 }
 
-.boardRow {
+.board-row {
     background: #1b1b1b;
     padding: 12px 14px;
     border-radius: 12px;
@@ -575,16 +654,16 @@ canvas {
     align-items: center;
 }
 
-.boardName {
+.board-name {
     font-weight: 600;
 }
 
-.boardBtns {
+.board-buttons {
     display: flex;
     gap: 6px;
 }
 
-.deleteBtn {
+.delete-button {
     background: #ff5a5a;
     border: none;
     border-radius: 8px;
@@ -592,7 +671,7 @@ canvas {
     cursor: pointer;
 }
 
-.modalInput {
+.modal-input {
     width: 100%;
     padding: 12px 14px;
     border-radius: 10px;
@@ -603,7 +682,7 @@ canvas {
     outline: none;
 }
 
-.modalBox {
+.modal-box {
     background: linear-gradient(180deg,#1c2030,#11141e);
     padding: 36px 50px;
     border-radius: 20px;
@@ -613,7 +692,7 @@ canvas {
     animation: pop .35s ease;
 }
 
-.modal .modalBox.settingsBox {
+.modal .modal-box.settings-box {
     width: 460px;
     max-width: 90vw;
 
@@ -630,7 +709,7 @@ canvas {
     gap: 18px;
 }
 
-.modal .settingsBox > * {
+.modal .settings-box > * {
     width: 100%;
 }
 
@@ -640,14 +719,14 @@ canvas {
     to { transform: scale(1); opacity: 1; }
 }
 
-#winnerText {
+#winner-text {
     font-size: 40px;
     font-weight: 700;
     margin: 20px 0;
     color: #a78bfa;
 }
 
-#savedBoardsList {
+#saved-boards-list {
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -655,7 +734,7 @@ canvas {
     overflow-y: auto;
 }
 
-.savedBoardBtn {
+.saved-board-button {
     background: #24283a;
     padding: 12px;
     border-radius: 12px;
@@ -663,11 +742,11 @@ canvas {
     transition: .15s;
 }
 
-.savedBoardBtn:hover {
+.saved-board-button:hover {
     background: #353b55;
 }
 
-.wheelRow {
+.wheel-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -675,19 +754,19 @@ canvas {
     border-bottom: 1px solid #ddd;
 }
 
-.wheelName {
+.wheel-name {
     flex: 1;
     font-weight: 500;
     font-size: 1rem;
     text-align: center;
 }
 
-.wheelBtns {
+.wheel-buttons {
     display: flex;
     gap: 8px;
 }
 
-.wheelBtns button {
+.wheel-buttons button {
     min-width: 60px;
     height: 32px;
     padding: 0 12px;
@@ -699,7 +778,7 @@ canvas {
 
 /* ---------- Notification Cards ---------- */
 
-#cardContainer {
+#card-container {
     position: fixed;
     top: 18px;
     left: 50%;
@@ -711,7 +790,7 @@ canvas {
     gap: 10px;
 }
 
-.toastCard {
+.toast-card {
     min-width: 280px;
     padding: 14px 18px 12px;
 
@@ -729,7 +808,7 @@ canvas {
     overflow: hidden;
 }
 
-.toastBar {
+.toast-bar {
     position: absolute;
     top: 0;
     left: 0;

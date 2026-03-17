@@ -9,53 +9,72 @@
 <body>
     <div id="fps" style="position:absolute; left:10px; top:10px; justify-self:left; align-self:normal;">100</div>
     <div class="app">
-        <div id="generalToolbar">
-            <button id="newWheelBtn" class="toolBtn">
+        <div id="wheel-select-area">
+            <div id="wheel-select-toolbar">
+                <button id="new-wheel-button" class="tool-button has-tooltip">
+                    <span class="material-icons-outlined">add</span>
+                    <div class="tooltip">Make a new wheel</div>
+                </button>
+                <button id="save-wheel-button" class="tool-button"><span class="material-icons-outlined">save</span></button>
+                <button id="save-as-wheel-button" class="tool-button"><span class="material-icons-outlined">save_as</span></button>
+                <button id="export-button" class="tool-button"><span class="material-icons-outlined">download</span></button>
+                <button id="import-button" class="tool-button"><span class="material-icons-outlined">upload</span></button>
+            </div>
+            <div id="wheel-select-browser">
+
+            </div>
+        </div>
+        <!--
+        <div id="general-toolbar">
+            <button id="new-wheel-button" class="tool-button">
                 <span class="material-icons-outlined">add</span>
                 New
             </button>
-            <button id="saveWheelBtn" class="toolBtn">
+            <button id="save-wheel-button" class="tool-button">
                 <span class="material-icons-outlined">save</span>
                 Save
             </button>
-            <button id="saveAsWheelBtn" class="toolBtn">
+            <button id="save-as-wheel-button" class="tool-button">
                 <span class="material-icons-outlined">save_as</span>
                 Save As
             </button>
-            <button id="loadWheelBtn" class="toolBtn">
+            <button id="load-wheel-button" class="tool-button">
                 <span class="material-icons-outlined">file_open</span>
                 Load
             </button>
-            <button id="exportBtn" class="toolBtn">
+            <button id="export-button" class="tool-button">
                 <span class="material-icons-outlined">download</span>
                 Export
             </button>
-            <button id="importBtn" class="toolBtn">
+            <button id="import-button" class="tool-button">
                 <span class="material-icons-outlined">upload</span>
                 Import
             </button>
-            <button id="copyBtn" class="toolBtn">
+            <button id="copy-button" class="tool-button">
                 <span class="material-icons-outlined">content_copy</span>
                 Copy JSON
             </button>
-            <input type="file" id="importFile" hidden>
+            <input type="file" id="import-file" hidden>
         </div>
+        -->
 
-        <aside class="wheelEntries">
-            <div class="wheelEntries-container">
-                <div class="textModeToggle">
-                    <span id="textModeToggleText">Text Mode</span>
-                    <label class="switch">
-                        <input type="checkbox" id="textModeSwitch">
-                        <span class="slider round"></span>
+        <aside class="wheel-entries">
+            <div class="wheel-entries-container">
+                <div class="wheel-entries-header">
+                    <label class="entry-mode-select">
+                        <input type="checkbox" id="text-mode-switch">
+                        <span class="entry-mode-text"></span>
                     </label>
-                    <span id="wheelEntriesCount">0, 0</span>
-                    <button id="shuffleBtn" class="secondaryBtn">
+                    <div id="wheel-entries-count-container">
+                        <div>Entries: <span id="wheel-entries-count">0</span></div>
+                        <div>Weight: <span id="wheel-entries-weight">0</span></div>
+                    </div>
+                    <button id="shuffle-button" class="secondary-button">
                         <span class="material-icons-outlined">cached</span>
                     </button>
                 </div>
-                <textarea id="textModeArea" class="hidden"></textarea>
-                <table id="wheelEntryTable">
+                <textarea id="text-mode-area" class="hidden"></textarea>
+                <table id="wheel-entry-table">
                 <thead>
                     <tr>
                         <th style="width:50%">Entries</th>
@@ -68,36 +87,36 @@
             </table>
             </div>
             <div class="tags-container">
-                <div id="tagFilters"></div>
+                <div id="tag-filters"></div>
             </div>
-            <button id="spinBtn" class="primary">Spin</button>
+            <button id="spin-button" class="primary">Spin</button>
         </aside>
 
         <!-- WHEEL -->
         <main id="wheel-wrapper">
-            <button id="settingsBtn" class="settings-btn">⚙</button>
+            <button id="settings-button" class="settings-button">⚙</button>
             <class id="wheel-connections" width="650" height="650"></class>
-            <canvas id="mainWheelCanvas" width="650" height="650"></canvas>
+            <canvas id="main-wheel-canvas" width="650" height="650"></canvas>
         </main>
 
     </div>
 
     <!-- MODALS -->
 
-    <div id="winnerModal" class="modal hidden">
-        <div class="modalBox">
+    <div id="winner-modal" class="modal hidden">
+        <div class="modal-box">
             <h2>🎉 Winner!</h2>
-            <div id="winnerText" style="overflow-wrap:anywhere;"></div>
-            <button id="closeModalBtn">Close</button>
+            <div id="winner-text" style="overflow-wrap:anywhere;"></div>
+            <button id="close-modal-button">Close</button>
         </div>
     </div>
 
-    <div id="settingsModal" class="modal hidden">
+    <div id="settings-modal" class="modal hidden">
         <h2>⚙ Wheel Settings</h2>
 
         <label>
             Wheel Color Scheme
-            <select id="colorSchemeSelect">
+            <select id="color-scheme-select">
                 <option value="classic">Classic</option>
                 <option value="cool">Cool Blue</option>
                 <option value="dark">Dark Mode</option>
@@ -107,7 +126,7 @@
 
         <label>
             Wheel Spin Sound
-            <select id="spinSoundSelect">
+            <select id="spin-sound-select">
                 <option value="metalpipe">Metal Pipe</option>
                 <option value="silence">Silence</option>
             </select>
@@ -115,56 +134,56 @@
 
         <label>
             Wheel Victory Sound
-            <select id="victorySoundSelect">
+            <select id="win-sound-select">
                 <option value="yippee">Yippee</option>
                 <option value="silence">Silence</option>
             </select>
         </label>
 
-        <div class="rangeGroup">
+        <div class="range-group">
             <small>Spin Strength</small>
             <span>0.5</span>
-            <input id="spinStrengthSlider" type="range" min="0.5" max="40" step="0.5">
+            <input id="spin-strength-slider" type="range" min="0.5" max="40" step="0.5">
             <span>40</span>
-            <input id="spinStrengthNumber" type="number">
+            <input id="spin-strength-number" type="number">
         </div>
 
-        <div class="rangeGroup">
+        <div class="range-group">
             <small>Spin Duration (milliseconds)</small>
             <span>50</span>
-            <input id="spinDurationSlider" type="range" min="50" max="60000" step="50">
+            <input id="spin-duration-slider" type="range" min="50" max="60000" step="50">
             <span>60000</span>
-            <input id="spinDurationNumber" type="number">
+            <input id="spin-duration-number" type="number">
         </div>
 
-        <div class="settingsActions">
-            <button id="closeSettingsBtn" class="primary">Done</button>
+        <div class="settings-actions">
+            <button id="close-settings-button" class="primary">Done</button>
         </div>
     </div>
 
-    <div id="saveModal" class="modal hidden">
-        <div class="modalCard">
+    <div id="save-modal" class="modal hidden">
+        <div class="modal-card">
             <h2>Save Wheel</h2>
-            <label class="modalLabel">Wheel Name</label>
-            <input id="saveNameInput" class="modalInput" placeholder="My Awesome Wheel">
-            <div class="modalActions">
-                <button id="cancelSaveAsBtn" class="secondaryBtn">Cancel</button>
-                <button id="confirmSaveAsBtn" class="primaryBtn">Save</button>
+            <label class="modal-label">Wheel Name</label>
+            <input id="save-name-input" class="modal-input" placeholder="My Awesome Wheel">
+            <div class="modal-actions">
+                <button id="cancel-save-as-button" class="secondary-button">Cancel</button>
+                <button id="confirm-save-as-button" class="primary-button">Save</button>
             </div>
         </div>
     </div>
 
-    <div id="loadModal" class="modal hidden">
-        <div class="modalCard">
+    <div id="load-modal" class="modal hidden">
+        <div class="modal-card">
             <h2>Load Wheel</h2>
-            <div id="loadList" class="wheelList"></div>
-            <div class="modalActions">
-                <button id="closeLoadBtn" class="secondaryBtn">Close</button>
+            <div id="load-list" class="wheel-list"></div>
+            <div class="modal-actions">
+                <button id="close-load-button" class="secondary-button">Close</button>
             </div>
         </div>
     </div>
 
-    <div id="cardContainer"></div>
+    <div id="card-container"></div>
 
     <script src="script/bundled.js"></script>
 </body>
