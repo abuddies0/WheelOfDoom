@@ -15,14 +15,29 @@
                     <span class="material-icons-outlined">add</span>
                     <div class="tooltip">Make a new wheel</div>
                 </button>
-                <button id="save-wheel-button" class="tool-button"><span class="material-icons-outlined">save</span></button>
-                <button id="save-as-wheel-button" class="tool-button"><span class="material-icons-outlined">save_as</span></button>
-                <button id="export-button" class="tool-button"><span class="material-icons-outlined">download</span></button>
-                <button id="import-button" class="tool-button"><span class="material-icons-outlined">upload</span></button>
+                <button id="save-wheel-button" class="tool-button has-tooltip">
+                    <span class="material-icons-outlined">save</span>
+                    <div class="tooltip">Save</div>
+                </button>
+                <button id="save-as-wheel-button" class="tool-button has-tooltip">
+                    <span class="material-icons-outlined">save_as</span>
+                    <div class="tooltip">Save As</div>
+                </button>
+                <button id="export-button" class="tool-button has-tooltip">
+                    <span class="material-icons-outlined">download</span>
+                    <div class="tooltip">Export</div>
+                </button>
+                <button id="import-button" class="tool-button has-tooltip">
+                    <span class="material-icons-outlined">upload</span>
+                    <div class="tooltip">Import</div>
+                </button>
             </div>
-            <div id="wheel-select-browser">
-
-            </div>
+            <ul id="wheel-select-browser">
+                <li class="wheel-select-folder"><span class="material-icons-outlined wheel-select-dropdown">keyboard_arrow_down</span>linkedin<ul class="wheel-select-child-container">
+                    <li class="wheel-select-wheel">_Main</li>
+                    <li class="wheel-select-wheel">Adjectives</li>
+                </ul></li>
+            </ul>
         </div>
         <!--
         <div id="general-toolbar">
@@ -93,10 +108,10 @@
         </aside>
 
         <!-- WHEEL -->
+        <button id="settings-button" class="settings-button">⚙</button>
         <main id="wheel-wrapper">
-            <button id="settings-button" class="settings-button">⚙</button>
-            <class id="wheel-connections" width="650" height="650"></class>
-            <canvas id="main-wheel-canvas" width="650" height="650"></canvas>
+            <canvas id="wheel-connections" width="640" height="640"></canvas>
+            <canvas id="main-wheel-canvas" width="640" height="640"></canvas>
         </main>
 
     </div>

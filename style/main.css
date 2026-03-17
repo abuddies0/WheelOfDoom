@@ -22,6 +22,7 @@ body {
 }
 
 .app {
+    position: absolute;
     display: flex;
     gap: 10px;
     padding: 32px 40px;
@@ -34,8 +35,11 @@ body {
         0 40px 120px rgba(0,0,0,0.8),
         inset 0 0 0 1px rgba(255,255,255,0.04);
 
-    height: min(100%, 600px);
+    height: min(100vh, 640px);
     aspect-ratio: 5/3;
+
+    flex-wrap: wrap;
+    justify-content: center;
 }
 
 .tooltip {
@@ -84,7 +88,7 @@ body {
 #wheel-select-toolbar {
     display: grid;
     grid-template-columns: auto auto 1fr auto auto;
-    border-bottom: 2px solid red;
+    /* border-bottom: 2px solid rgb(69, 4, 126); */
     padding-bottom: 20px;
     height: 32px;
     width: 100%;
@@ -110,7 +114,36 @@ body {
 }
 
 #wheel-select-browser {
+    background-color: #040014;
+    margin-top: 20px;
+    height: calc(100%-20px);
+    width: 100%;
+    border-radius: 8px;
 
+    overflow: scroll;
+    scrollbar-width: none;
+
+    list-style-type: none;
+    padding:4px;
+
+    font-size: 14px;
+}
+
+
+.wheel-select-child-container {
+    list-style-image: url('../asset/img/folder_sub_bracket_white.png');
+    margin-left: -5px;
+}
+
+.wheel-select-wheel::before {
+    content: "😊";
+    opacity: 0.5;
+}
+
+.wheel-select-dropdown {
+    height: 20%;
+    justify-self: center;
+    align-self: center;
 }
 
 
@@ -411,13 +444,13 @@ input {
     position: relative;
 
     /* Match canvas size exactly */
-    width: 650px;
-    height: 650px;
+    width: max(320px, 40%);
+    height: 100%;
 
     display: flex;
     flex-direction: column;
-    align-items: top;
-    justify-content: center;
+    align-items: center;
+    justify-items: center;
 }
 
 canvas {
@@ -428,6 +461,7 @@ canvas {
     flex-direction: row;
     width: 100%;
     display: flex;
+    flex-wrap: none;
     align-content: center;
     justify-content: center;
     overflow:hidden;
@@ -436,6 +470,16 @@ canvas {
 .wheel-canvas {
     display: flex;
     min-width: 0;
+}
+
+#main-wheel-canvas {
+    width: 100%;
+    aspect-ratio: 1/1;
+}
+
+#wheel-connections {
+    width: 100%;
+    height: 100%;
 }
 
 #wheel-connections {

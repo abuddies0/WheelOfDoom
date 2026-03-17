@@ -420,8 +420,7 @@ function restructureWheels() {
     const wheelHeight = maxHeight / (subLevels+1);
 
     // Settings button (always there)
-    let html = `<button id="settings-button" class="settings-button">⚙</button>\n`;
-    html += `<canvas id="wheel-connections" width="650" height="650"></canvas>\n`;
+    let html = `<canvas id="wheel-connections" width="640" height="640"></canvas>\n`;
     // Build canvases row-by-row
     let i = 0;
     for (let level = 0; level <= subLevels; level++) {
