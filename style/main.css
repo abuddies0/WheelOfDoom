@@ -11,8 +11,8 @@ body {
     margin: 0;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
-    background: radial-gradient(circle at top, #07090f, #02030a);
-    color: #e5e7eb;
+    background-color: #060606;
+    color: #eeeeee;
 
     min-height: 100vh;
 
@@ -27,20 +27,19 @@ body {
     gap: 10px;
     padding: 32px 40px;
 
-    background: linear-gradient(180deg, #181c27, #11141d);
-
     border-radius: 22px;
 
-    box-shadow:
+    /* box-shadow:
         0 40px 120px rgba(0,0,0,0.8),
-        inset 0 0 0 1px rgba(255,255,255,0.04);
+        inset 0 0 0 1px rgba(255,255,255,0.04); */
 
-    height: min(100vh, 640px);
-    aspect-ratio: 5/3;
+    max-width: 100%;
+    width: fit-content;
 
-    flex-wrap: wrap;
+    flex-direction: row;
     justify-content: center;
 }
+
 
 .tooltip {
     display: none;
@@ -68,7 +67,7 @@ body {
 
 /*--------- WHEEL SELECT ----------------*/
 #wheel-select-area {
-    width: 240px;
+    width: 40%;
 
     display: grid;
     grid-template-columns: auto;
@@ -83,6 +82,7 @@ body {
     box-shadow:
         0 10px 40px rgba(0,0,0,0.6),
         inset 0 0 0 1px rgba(120,140,255,0.15);
+    color: #bbbbbb;
 }
 
 #wheel-select-toolbar {
@@ -135,60 +135,43 @@ body {
     margin-left: -5px;
 }
 
+.wheel-select-wheel, .wheel-select-folder-text {
+    cursor: pointer;
+}
+
+.wheel-select-wheel:hover, .wheel-select-folder-text:hover {
+    color: #eeeeee;
+}
+
 .wheel-select-wheel::before {
-    content: "😊";
+    content: "🛞";
     opacity: 0.5;
 }
 
 .wheel-select-dropdown {
-    height: 20%;
+    width: 12px;
+    height: 12px;
+    transform: scale(0.5) translate(-10px, 20px);
     justify-self: center;
     align-self: center;
 }
 
 
-/*--------- GENERAL TOOLBAR -----------*/
-/*
-#general-toolbar {
-    background: rgba(20, 20, 35, 0.75);
-    backdrop-filter: blur(14px);
+/*--------- ENTRIES -----------*/
 
-    border-radius: 18px;
-    padding: 16px;
-
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-
-    box-shadow:
-        0 10px 40px rgba(0,0,0,0.6),
-        inset 0 0 0 1px rgba(120,140,255,0.15);
-}
-
-.tool-button {
-    background: linear-gradient(135deg, #2d2d55, #3a2f66);
-    color: white;
-
+#spin-button {
     border: none;
-    border-radius: 12px;
-
-    padding: 10px 14px;
-    font-size: 14px;
-
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
+    border-radius: 8px;
+    padding: 10px 18px;
+    margin: 4px;
+    font-weight: 600;
     cursor: pointer;
-
-    transition: transform .12s ease, box-shadow .12s ease;
 }
 
-.tool-button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 18px rgba(120,100,255,0.45);
+#spin-button:active {
+  transform: scale(1.2);
+  z-index: 1;
 }
-*/
 
 .entry-mode-select {
     position: relative;
@@ -244,8 +227,8 @@ textarea {
     color: #fff;
     border: 1px solid #2a2f3a;
     border-radius: 10px;
+    min-width: 480px;
     padding: 12px;
-    height: 240px;
     resize: vertical;
     outline: none;
 }
@@ -289,10 +272,14 @@ button.primary:hover {
 }
 
 .wheel-entries {
-    width: 300px;
+    position: relative;
+    min-width: 55%;
     display: flex;
     flex-direction: column;
     gap: 14px;
+    background-color: #111111;
+    border: 2px solid #444444;
+    border-radius: 10px;
 }
 
 .wheel-entries h1 {
@@ -305,6 +292,7 @@ button.primary:hover {
     height: 450px; /* Fixed height of the container */
     overflow: auto; /* Adds scroll bars if content overflows */
     scrollbar-width: none;
+    background-color: #181c27;
     border: 1px solid #444444;
     border-radius: 10px;
     padding: 5px;
@@ -438,19 +426,33 @@ input {
     overflow: auto;
 }
 
+/*------------- EDITOR --------------*/
+
+#editor-wrapper {
+    display: flex;
+    width: max(640px, 55%);
+
+    gap: 10px;
+
+    justify-content: center;
+    align-items: top;
+}
+
+
 /*------------ WHEEL ----------------*/
 
 #wheel-wrapper {
     position: relative;
 
     /* Match canvas size exactly */
-    width: max(320px, 40%);
-    height: 100%;
+    width: max(640px, 40vw);
+    height: max(640px, 40vw);
 
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-items: center;
+    justify-content: center;
+    overflow: hidden;
 }
 
 canvas {
@@ -468,7 +470,6 @@ canvas {
 }
 
 .wheel-canvas {
-    display: flex;
     min-width: 0;
 }
 
@@ -491,7 +492,7 @@ canvas {
 .settings-button {
     position: absolute;
     top: 10px;
-    right: 10px;
+    left: 10px;
 
     z-index: 1;
 
@@ -792,10 +793,9 @@ canvas {
 
 .wheel-row {
     display: flex;
+    flex-direction: row;
     align-items: center;
-    justify-content: space-between;
     padding: 8px 12px;
-    border-bottom: 1px solid #ddd;
 }
 
 .wheel-name {
@@ -865,4 +865,26 @@ canvas {
 @keyframes slideDown {
     from { transform: translateY(-14px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
+}
+
+
+/*------ PHONES -----------*/
+@media (max-aspect-ratio: 1/1) {
+    .app {
+        width: 100vh;
+        background: radial-gradient(circle at top, #07090f, #02030a);
+        align-items: flex-start;
+        top: 0;
+        flex-wrap: wrap;
+    }
+
+    #wheel-wrapper {
+        height: 100vw;
+        width: 100vw;
+    }
+
+    #editor-wrapper {
+        width: 100vw;
+        height: max(920px, calc(100vh - 100vw));
+    }
 }
