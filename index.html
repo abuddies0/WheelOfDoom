@@ -7,106 +7,8 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
 </head>
 <body>
-    <div id="fps" style="position:absolute; left:10px; top:10px; justify-self:left; align-self:normal;">100</div>
+    <!-- <div id="fps" style="position:absolute; left:10px; top:10px; justify-self:left; align-self:normal;">100</div> -->
     <div class="app">
-        <div id="wheel-select-area">
-            <div id="wheel-select-toolbar">
-                <button id="new-wheel-button" class="tool-button has-tooltip">
-                    <span class="material-icons-outlined">add</span>
-                    <div class="tooltip">Make a new wheel</div>
-                </button>
-                <button id="save-wheel-button" class="tool-button has-tooltip">
-                    <span class="material-icons-outlined">save</span>
-                    <div class="tooltip">Save</div>
-                </button>
-                <button id="save-as-wheel-button" class="tool-button has-tooltip">
-                    <span class="material-icons-outlined">save_as</span>
-                    <div class="tooltip">Save As</div>
-                </button>
-                <button id="export-button" class="tool-button has-tooltip">
-                    <span class="material-icons-outlined">download</span>
-                    <div class="tooltip">Export</div>
-                </button>
-                <button id="import-button" class="tool-button has-tooltip">
-                    <span class="material-icons-outlined">upload</span>
-                    <div class="tooltip">Import</div>
-                </button>
-            </div>
-            <ul id="wheel-select-browser">
-                <li class="wheel-select-folder"><span class="material-icons-outlined wheel-select-dropdown">keyboard_arrow_down</span>linkedin<ul class="wheel-select-child-container">
-                    <li class="wheel-select-wheel">_Main</li>
-                    <li class="wheel-select-wheel">Adjectives</li>
-                </ul></li>
-            </ul>
-        </div>
-        <!--
-        <div id="general-toolbar">
-            <button id="new-wheel-button" class="tool-button">
-                <span class="material-icons-outlined">add</span>
-                New
-            </button>
-            <button id="save-wheel-button" class="tool-button">
-                <span class="material-icons-outlined">save</span>
-                Save
-            </button>
-            <button id="save-as-wheel-button" class="tool-button">
-                <span class="material-icons-outlined">save_as</span>
-                Save As
-            </button>
-            <button id="load-wheel-button" class="tool-button">
-                <span class="material-icons-outlined">file_open</span>
-                Load
-            </button>
-            <button id="export-button" class="tool-button">
-                <span class="material-icons-outlined">download</span>
-                Export
-            </button>
-            <button id="import-button" class="tool-button">
-                <span class="material-icons-outlined">upload</span>
-                Import
-            </button>
-            <button id="copy-button" class="tool-button">
-                <span class="material-icons-outlined">content_copy</span>
-                Copy JSON
-            </button>
-            <input type="file" id="import-file" hidden>
-        </div>
-        -->
-
-        <aside class="wheel-entries">
-            <div class="wheel-entries-container">
-                <div class="wheel-entries-header">
-                    <label class="entry-mode-select">
-                        <input type="checkbox" id="text-mode-switch">
-                        <span class="entry-mode-text"></span>
-                    </label>
-                    <div id="wheel-entries-count-container">
-                        <div>Entries: <span id="wheel-entries-count">0</span></div>
-                        <div>Weight: <span id="wheel-entries-weight">0</span></div>
-                    </div>
-                    <button id="shuffle-button" class="secondary-button">
-                        <span class="material-icons-outlined">cached</span>
-                    </button>
-                </div>
-                <textarea id="text-mode-area" class="hidden"></textarea>
-                <table id="wheel-entry-table">
-                <thead>
-                    <tr>
-                        <th style="width:50%">Entries</th>
-                        <th style="width:15%">Weight</th>
-                        <th style="width:35%">Tags</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-            </div>
-            <div class="tags-container">
-                <div id="tag-filters"></div>
-            </div>
-            <button id="spin-button" class="primary">Spin</button>
-        </aside>
-
         <!-- WHEEL -->
         <button id="settings-button" class="settings-button">⚙</button>
         <main id="wheel-wrapper">
@@ -114,6 +16,79 @@
             <canvas id="main-wheel-canvas" width="640" height="640"></canvas>
         </main>
 
+        <main id="editor-wrapper">
+            <!-- WHEEL ENTRIES -->
+            <aside class="wheel-entries">
+                <div class="wheel-entries-container">
+                    <div class="wheel-entries-header">
+                        <label class="entry-mode-select">
+                            <input type="checkbox" id="text-mode-switch">
+                            <span class="entry-mode-text"></span>
+                        </label>
+                        <div id="wheel-entries-count-container">
+                            <div>Entries: <span id="wheel-entries-count">0</span></div>
+                            <div>Weight: <span id="wheel-entries-weight">0</span></div>
+                        </div>
+                        <button id="shuffle-button" class="secondary-button">
+                            <span class="material-icons-outlined">cached</span>
+                        </button>
+                    </div>
+                    <textarea id="text-mode-area" class="hidden"></textarea>
+                    <table id="wheel-entry-table">
+                    <thead>
+                        <tr>
+                            <th style="width:50%">Entries</th>
+                            <th style="width:15%">Weight</th>
+                            <th style="width:35%">Tags</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                </div>
+                <div class="tags-container">
+                    <div id="tag-filters"></div>
+                </div>
+                <button id="spin-button" class="primary">Spin</button>
+            </aside>
+
+            <!-- WHEEL SELECTOR -->
+            <div id="wheel-select-area">
+                <div id="wheel-select-toolbar">
+                    <button id="new-wheel-button" class="tool-button has-tooltip">
+                        <span class="material-icons-outlined">add</span>
+                        <div class="tooltip">Make a new wheel</div>
+                    </button>
+                    <button id="save-wheel-button" class="tool-button has-tooltip">
+                        <span class="material-icons-outlined">save</span>
+                        <div class="tooltip">Save</div>
+                    </button>
+                    <button id="save-as-wheel-button" class="tool-button has-tooltip">
+                        <span class="material-icons-outlined">save_as</span>
+                        <div class="tooltip">Save As</div>
+                    </button>
+                    <button id="export-button" class="tool-button has-tooltip">
+                        <span class="material-icons-outlined">download</span>
+                        <div class="tooltip">Export</div>
+                    </button>
+                    <button id="import-button" class="tool-button has-tooltip">
+                        <span class="material-icons-outlined">upload</span>
+                        <div class="tooltip">Import</div>
+                    </button>
+                </div>
+                <ul id="wheel-select-browser">
+                    <li class="wheel-select-folder"><div class="wheel-select-folder-text"><span class="material-icons-outlined wheel-select-dropdown">keyboard_arrow_down</span>linkedin</div><ul class="wheel-select-child-container">
+                        <li class="wheel-select-wheel">_Main</li>
+                        <li class="wheel-select-wheel">Adjectives</li>
+                        <li class="wheel-select-folder"><div class="wheel-select-folder-text"><span class="material-icons-outlined wheel-select-dropdown">keyboard_arrow_down</span>subs</div><ul class="wheel-select-child-container">
+                            <li class="wheel-select-wheel">Sub1</li>
+                            <li class="wheel-select-wheel">My Wheel</li>
+                        </ul></li>
+                    </ul></li>
+                </ul>
+            </div>
+        </main>
+    <!-- END APP -->
     </div>
 
     <!-- MODALS -->

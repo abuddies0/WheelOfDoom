@@ -13,7 +13,7 @@ import { setSavedWheels, getSavedWheels, showCard, loadWheelData } from "./main.
      textModeArea: document.getElementById("text-mode-area"),
      shuffleButton: document.getElementById("shuffle-button"),
      wheelEntriesCountSpan: document.getElementById("wheel-entries-count"),
-     wheelEntriesWeightSpan: document.getElementById("wheel-entries-count"),
+     wheelEntriesWeightSpan: document.getElementById("wheel-entries-weight"),
 
     // General toolbar buttons
      newWheelButton: document.getElementById("new-wheel-button"),

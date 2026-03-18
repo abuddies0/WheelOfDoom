@@ -11,7 +11,7 @@
      textModeArea: document.getElementById("text-mode-area"),
      shuffleButton: document.getElementById("shuffle-button"),
      wheelEntriesCountSpan: document.getElementById("wheel-entries-count"),
-     wheelEntriesWeightSpan: document.getElementById("wheel-entries-count"),
+     wheelEntriesWeightSpan: document.getElementById("wheel-entries-weight"),
 
     // General toolbar buttons
      newWheelButton: document.getElementById("new-wheel-button"),
@@ -2090,9 +2090,9 @@ function update() {
         }
     }
 
-    if (DOM_ELEMENTS.fpsCounter != null) {
-        DOM_ELEMENTS.fpsCounter.textContent = String(Math.min(1000, Math.round(1000.0 / (performance.now() - startTime))));
-    }
+    // if (DOM_ELEMENTS.fpsCounter != null) {
+    //     DOM_ELEMENTS.fpsCounter.textContent = String(Math.min(1000, Math.round(1000.0 / (performance.now() - startTime))));
+    // }
 }
 
 
@@ -2159,7 +2159,7 @@ function restructureWheels() {
     const maxHeight = DOM_ELEMENTS.wheelWrapper.clientHeight;
     const wheelHeight = maxHeight / (subLevels+1);
 
-    // Settings button (always there)
+    // Connections canvas (always there)
     let html = `<canvas id="wheel-connections" width="640" height="640"></canvas>\n`;
     // Build canvases row-by-row
     let i = 0;
@@ -2193,8 +2193,11 @@ function restructureWheels() {
         if (wheelConnections == null || !(wheelConnections instanceof HTMLCanvasElement)) { return; }
         const connectionsContext = wheelConnections.getContext("2d");
         if (connectionsContext == null || !(connectionsContext instanceof CanvasRenderingContext2D)) { return; }
-        const ox = wheelConnections.getBoundingClientRect().left;
-        const oy = wheelConnections.getBoundingClientRect().top;
+        const rect = wheelConnections.getBoundingClientRect();
+        wheelConnections.width = rect.width;
+        wheelConnections.height = rect.height;
+        const ox = rect.left;
+        const oy = rect.top;
         let parentRect, px, py, pr;
         let childRect, cx, cy, cr;
         let d, vx, vy;
