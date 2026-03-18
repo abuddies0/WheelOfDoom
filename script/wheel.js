@@ -75,8 +75,9 @@ export class Wheel {
      * @param {string|null} name
      * @param {Array<WheelEntry>} wheelEntries 
      * @param {HTMLCanvasElement|null} canvas 
+     * @param {boolean} makeBuffer True if a buffer should be made. False otherwise.
      */
-    constructor(name, wheelEntries, canvas) {
+    constructor(name, wheelEntries, canvas, makeBuffer=false) {
         if (!Wheel.INITIALIZED) {
             Wheel.initialize_statics();
         }
@@ -155,8 +156,11 @@ export class Wheel {
         /** @type {Wheel|null} The parent of this wheel */
         this.parentWheel = null;
 
+        /** @type {boolean} True if this wheel is from the cache. False otherwise. */
+        this.isCached = false;
+
         // Initially created with EVERY TAG enabled
-        this.updateEntries(this.getAssociatedTags());
+        this.updateEntries(this.getAssociatedTags(), makeBuffer);
     }
 
 
@@ -181,12 +185,44 @@ export class Wheel {
     static fromJSON(json, useCache=false) {
         // Check cache first
         if (useCache && Wheel.CACHED_WHEELS.hasOwnProperty(json.name)) {
-            
+            const newWheel = Wheel.baseWheel();
+            newWheel.fromCache(Wheel.CACHED_WHEELS[json.name]);
+            return newWheel;
         }
         // Ignore cache and make new wheel
         const newWheel = Wheel.baseWheel();
         newWheel.fromJSON(json);
         return newWheel;
+    }
+
+
+    /**
+     * Overwrites all the data of this current wheel
+     * This copies pretty much everything except the literal canvas
+     * @param {Wheel} cachedWheel The cached wheel to overwrite with
+     */
+    fromCache(cachedWheel) {
+        console.log("Loaded wheel from cache!");
+
+        this.setName(cachedWheel.name);
+        this.setEntries(cachedWheel.wheelEntries);
+        this.enabledTags = cachedWheel.enabledTags;
+        this.canvasBuffer = cachedWheel.canvasBuffer;
+        this.contextBuffer = cachedWheel.contextBuffer;
+        this.isCached = true;
+        this.riggedWheelEntry = cachedWheel.riggedWheelEntry;
+        this.riggedAmount = cachedWheel.riggedAmount;
+
+        this.updateTags();
+        this.updateEntries(this.enabledTags, false);
+
+        this.buffered = true;
+
+        this.spinStrength = cachedWheel.spinStrength;
+        this.spinDuration = cachedWheel.spinDuration;
+        this.colorScheme = cachedWheel.colorScheme;
+        this.spinSound = cachedWheel.spinSound;
+        this.winSound = cachedWheel.winSound;
     }
 
 
@@ -216,6 +252,12 @@ export class Wheel {
      * This should only be called when the wheel needs to first be drawn.
      */
     makeBuffer() {
+        // Cached wheels cannot be rebuffered
+        if (this.isCached) {
+            return;
+        }
+        console.log(`Made new buffer for ${this.name} with ${this.wheelEntries.length} entries. :p`);
+
         this.buffered = true;
         if (this.canvas == null || this.contextBuffer == null) return;
         this.canvasBuffer.width = this.canvas.width;
@@ -364,7 +406,7 @@ export class Wheel {
                 console.log(`Wheel {${subName}} doesn't exist.`)
                 continue;
             }
-            const subWheel = Wheel.fromJSON(savedWheels[subName]);
+            const subWheel = Wheel.fromJSON(savedWheels[subName], true);
             subWheel.isSub = true;
             subWheel.subLevel = this.subLevel + 1;
             subWheel.parentWheel = this;
@@ -503,8 +545,9 @@ export class Wheel {
     /**
      * Enables and disables wheel entries based on enabled tags
      * @param {Set<string>} enabledTags A list of all enabled tags.
+     * @param {boolean} refreshBuffer True if the buffer should be redrawn. (default=true)
      */
-    updateEntries(enabledTags) {
+    updateEntries(enabledTags, refreshBuffer=true) {
         // Fix enabled wheel entries (based on tags)
         this.enabledWheelEntries = new Array();
         for (const wheelEntry of this.wheelEntries) {
@@ -532,7 +575,9 @@ export class Wheel {
         }
         this.tags.delete("");
 
-        this.makeBuffer();
+        if (refreshBuffer) {
+            this.makeBuffer();
+        }   
     }
 
 

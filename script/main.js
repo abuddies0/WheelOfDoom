@@ -27,7 +27,18 @@ let editingWheel = null;
  * Goes through the saved wheels and caches them all.
  * The expectation is that this is called asyncronously.
  */
-async function cacheSavedWheels() {
+function cacheSavedWheels() {
+    _cacheSavedWheels().then(() => {console.log(`Cached ${Object.keys(Wheel.CACHED_WHEELS).length} Wheels!`); });
+}
+
+
+/**
+ * Should ONLY be called by cacheSavedWheels()!
+ * Goes through the saved wheels and caches them all.
+ * The expectation is that this is called asyncronously.
+ * @return {Promise<any>} A async promise to run to cache wheels.
+ */
+async function _cacheSavedWheels() {
     cachedWheels = {};
     const savedJSONs = getSavedWheels();
     for (const [wheelName, json] of Object.entries(savedJSONs)) {
@@ -608,6 +619,8 @@ export function loadWheelData(json) {
 
 /* ---------------- Init/Main ---------------- */
 document.addEventListener("DOMContentLoaded", () => {
+    cacheSavedWheels();
+
     editingWheel = Wheel.baseWheel();
     wheels.push(editingWheel)
     // Update all cached wheels
