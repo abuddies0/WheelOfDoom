@@ -602,10 +602,11 @@ class Wheel {
     /**
      * Creates a new wheel exclusively from JSON
      * @param {SavedWheel} json The JSON obtained from wheel.toJSON()
-     * @param {boolean} useCache True if the program should first check the cache for wheels matching this name.
+     * @param {boolean} useCache True if the program should first check the cache for wheels matching this name. (default=false)
+     * @param {boolean} makeBuffer True if the new wheel should automatically make a cache. (default=true)
      * @return {Wheel} The wheel that contains that json data
      */
-    static fromJSON(json, useCache=false) {
+    static fromJSON(json, useCache=false, makeBuffer=true) {
         // Check cache first
         if (useCache && Wheel.CACHED_WHEELS.hasOwnProperty(json.name)) {
             const newWheel = Wheel.baseWheel();
@@ -614,7 +615,7 @@ class Wheel {
         }
         // Ignore cache and make new wheel
         const newWheel = Wheel.baseWheel();
-        newWheel.fromJSON(json);
+        newWheel.fromJSON(json, makeBuffer);
         return newWheel;
     }
 
@@ -625,13 +626,11 @@ class Wheel {
      * @param {Wheel} cachedWheel The cached wheel to overwrite with
      */
     fromCache(cachedWheel) {
-        console.log("Loaded wheel from cache!");
+        // console.log("Loaded wheel from cache!");
 
         this.setName(cachedWheel.name);
         this.setEntries(cachedWheel.wheelEntries);
         this.enabledTags = cachedWheel.enabledTags;
-        this.canvasBuffer = cachedWheel.canvasBuffer;
-        this.contextBuffer = cachedWheel.contextBuffer;
         this.isCached = true;
         this.riggedWheelEntry = cachedWheel.riggedWheelEntry;
         this.riggedAmount = cachedWheel.riggedAmount;
@@ -646,14 +645,18 @@ class Wheel {
         this.colorScheme = cachedWheel.colorScheme;
         this.spinSound = cachedWheel.spinSound;
         this.winSound = cachedWheel.winSound;
+
+        this.canvasBuffer = cachedWheel.canvasBuffer;
+        this.contextBuffer = cachedWheel.contextBuffer;
     }
 
 
     /**
      * Overwrites all the data of this current wheel.
      * @param {SavedWheel} json The json to overwrite the wheel with.
+     * @param {boolean} makeBuffer True if the program should automatically make a buffer. (default=true)
      */
-    fromJSON(json) {
+    fromJSON(json, makeBuffer=true) {
         this.setName(json.name);
         this.setEntries(json.wheelEntries.map(savedEntry => WheelEntry.fromJSON(savedEntry)).filter(e => e !== null));
         if (json.enabledTags instanceof Array) { this.enabledTags = new Set(json.enabledTags); }
@@ -661,7 +664,7 @@ class Wheel {
         this.riggedAmount = json.riggedAmount;
 
         this.updateTags();
-        this.updateEntries(this.enabledTags);
+        this.updateEntries(this.enabledTags, makeBuffer);
 
         this.spinStrength = json.settings.spinStrength;
         this.spinDuration = json.settings.spinDuration;
@@ -679,25 +682,35 @@ class Wheel {
         if (this.isCached) {
             return;
         }
-        console.log(`Made new buffer for ${this.name} with ${this.wheelEntries.length} entries. :p`);
+        // console.log(`Buffered wheel named ${this.name} with ${this.wheelEntries.length} entries. :p`);
 
         this.buffered = true;
-        if (this.canvas == null || this.contextBuffer == null) return;
-        this.canvasBuffer.width = this.canvas.width;
-        this.canvasBuffer.height = this.canvas.height;
+        let canvasToUse = null;
+        if (this.canvas != null) {
+            canvasToUse = this.canvas;
+        }
+        else if (this.canvasBuffer != null) {
+            canvasToUse = this.canvasBuffer;
+        }
+        else {
+            return;
+        }
+        if (this.contextBuffer == null) return;
+        this.canvasBuffer.width = canvasToUse.width;
+        this.canvasBuffer.height = canvasToUse.height;
         // Do not render if there are no wheel entries
         if (this.enabledWheelEntries.length == 0) return;
         // Clear the canvas
-        this.contextBuffer.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.contextBuffer.clearRect(0, 0, canvasToUse.width, canvasToUse.height);
         // Choose the correct color scheme
         const colorSchemeFunction = this.colorScheme || Wheel.COLOR_SCHEMES.classic;
 
         // Buffer, center, and rotate the wheel
-        const horOffset = this.canvas.width * 0.025;    // 2.5% padding
-        const verOffset = this.canvas.height* 0.025;    // 2.5% padding
-        const radius = this.canvas.height * 0.475;      // 95% of space is wheel
+        // const horOffset = this.canvas.width * 0.025;    // 2.5% padding
+        // const verOffset = this.canvas.height* 0.025;    // 2.5% padding
+        const radius = canvasToUse.height * 0.475;      // 95% of space is wheel
         this.contextBuffer.save();
-        this.contextBuffer.translate(this.canvas.width*0.5, this.canvas.height*0.5);   // Center
+        this.contextBuffer.translate(canvasToUse.width*0.5, canvasToUse.height*0.5);   // Center
         // No rotation (0 degrees)
 
         // Start drawing slices
@@ -718,23 +731,30 @@ class Wheel {
             this.contextBuffer.save();
             this.contextBuffer.rotate(startAngle - (this.sliceAngles[i])*0.5);
 
-            // TODO: Mathematically determine font
-            this.contextBuffer.font = "100px system-ui";
-            const widthScale = this.contextBuffer.measureText(text).width / 100;
-            const arcLength = radius * this.sliceAngles[i];
+            // Only use lines if the slices will be too small
+            if (this.wheelEntries.length > 200) {
+                this.contextBuffer.fillStyle = "black";
+                this.contextBuffer.fillRect(radius+radius*0.1, radius, radius*0.85, 4);
+            }
+            else {
+                // TODO: Mathematically determine font
+                this.contextBuffer.font = "100px system-ui";
+                const widthScale = this.contextBuffer.measureText(text).width / 100;
+                const arcLength = radius * this.sliceAngles[i];
 
-            const sizeFromWidth = maxWidth / widthScale;
-            const sizeFromArc = arcLength; // height ≈ fontSize
+                const sizeFromWidth = maxWidth / widthScale;
+                const sizeFromArc = arcLength; // height ≈ fontSize
 
-            this.contextBuffer.font = `${Math.max(6, Math.min(sizeFromWidth, sizeFromArc, 22))}px system-ui`;
+                this.contextBuffer.font = `${Math.max(6, Math.min(sizeFromWidth, sizeFromArc, 22))}px system-ui`;
 
-            this.contextBuffer.fillStyle = "#111";
-            this.contextBuffer.textAlign = "right";
-            this.contextBuffer.textBaseline = "middle";
-            this.contextBuffer.translate(radius*0.99,0);
-            this.contextBuffer.fillText(text,0,0);
-
+                this.contextBuffer.fillStyle = "#111";
+                this.contextBuffer.textAlign = "right";
+                this.contextBuffer.textBaseline = "middle";
+                this.contextBuffer.translate(radius*0.99,0);
+                this.contextBuffer.fillText(text,0,0);
+            }
             this.contextBuffer.restore();
+            
 
             startAngle -= this.sliceAngles[i];
         }
@@ -756,7 +776,7 @@ class Wheel {
         this.context.save();
         this.context.translate(radius, radius);
         this.context.rotate(this.rotation);
-        this.context.drawImage(this.canvasBuffer, -radius, -radius);
+        this.context.drawImage(this.canvasBuffer, -radius, -radius, this.canvas.width, this.canvas.height);
         this.context.restore();
 
         // Draw pointer
@@ -1342,6 +1362,17 @@ class Wheel {
 
 
     /**
+     * Sets the buffer canvas of this wheel.
+     * Typically used for cached wheels.
+     * @param {HTMLCanvasElement} canvasBuffer 
+     */
+    setCanvasBuffer(canvasBuffer) {
+        this.canvasBuffer = canvasBuffer;
+        this.contextBuffer = this.canvasBuffer.getContext("2d");
+    }
+
+
+    /**
      * Sets the canvas of this wheel to its saved canvas ID
      */
     setCanvasFromID() {
@@ -1757,7 +1788,7 @@ let editingWheel = null;
  * The expectation is that this is called asyncronously.
  */
 function cacheSavedWheels() {
-    _cacheSavedWheels().then(() => {console.log(`Cached ${Object.keys(Wheel.CACHED_WHEELS).length} Wheels!`); });
+    _cacheSavedWheels().then(() => {});
 }
 
 
@@ -1770,10 +1801,38 @@ function cacheSavedWheels() {
 async function _cacheSavedWheels() {
     cachedWheels = {};
     const savedJSONs = getSavedWheels();
+    let cachedNumber = 0;
+    let name;
+    let id;
     for (const [wheelName, json] of Object.entries(savedJSONs)) {
-        cachedWheels[wheelName] = Wheel.fromJSON(json, false);
+        const wheel = Wheel.fromJSON(json, false, false);
+        name = wheel.name || "unknown";
+        id = `cached-wheel_${name.replaceAll("\"","'")}`;
+        let canvasBuffer = null;
+        // Try to find existing buffer
+        for (const cachedWheel of Object.values(Wheel.CACHED_WHEELS)) {
+            if (cachedWheel.name == name) {
+                canvasBuffer = cachedWheel.canvasBuffer;
+            }
+        }
+        // Make new canvas if it doesn't exit
+        if (canvasBuffer == null || !(canvasBuffer instanceof HTMLElement)) {
+            canvasBuffer = document.createElement('canvas');
+            if (!(canvasBuffer instanceof HTMLCanvasElement)) { continue; }
+            canvasBuffer.height = 640;
+            canvasBuffer.width = 640;
+            canvasBuffer.id = id;
+        }
+
+        if (!(canvasBuffer instanceof HTMLCanvasElement)) { continue; }
+        wheel.setCanvasBuffer(canvasBuffer);
+        wheel.makeBuffer();
+        
+        Wheel.CACHED_WHEELS[wheelName] = wheel;
+        cachedNumber++;
     }
-    Wheel.CACHED_WHEELS = cachedWheels;
+
+    console.log(`Cached ${Object.keys(Wheel.CACHED_WHEELS).length} Wheels!`);
 }
 
 

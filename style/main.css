@@ -441,6 +441,12 @@ input {
 
 /*------------ WHEEL ----------------*/
 
+#wheel-cache {
+    position: static;
+    opacity: 0;
+    left: -9999px;
+}
+
 #wheel-wrapper {
     position: relative;
 

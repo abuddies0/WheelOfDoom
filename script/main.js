@@ -28,7 +28,7 @@ let editingWheel = null;
  * The expectation is that this is called asyncronously.
  */
 function cacheSavedWheels() {
-    _cacheSavedWheels().then(() => {console.log(`Cached ${Object.keys(Wheel.CACHED_WHEELS).length} Wheels!`); });
+    _cacheSavedWheels().then(() => {});
 }
 
 
@@ -41,10 +41,38 @@ function cacheSavedWheels() {
 async function _cacheSavedWheels() {
     cachedWheels = {};
     const savedJSONs = getSavedWheels();
+    let cachedNumber = 0;
+    let name;
+    let id;
     for (const [wheelName, json] of Object.entries(savedJSONs)) {
-        cachedWheels[wheelName] = Wheel.fromJSON(json, false);
+        const wheel = Wheel.fromJSON(json, false, false);
+        name = wheel.name || "unknown";
+        id = `cached-wheel_${name.replaceAll("\"","'")}`;
+        let canvasBuffer = null;
+        // Try to find existing buffer
+        for (const cachedWheel of Object.values(Wheel.CACHED_WHEELS)) {
+            if (cachedWheel.name == name) {
+                canvasBuffer = cachedWheel.canvasBuffer;
+            }
+        }
+        // Make new canvas if it doesn't exit
+        if (canvasBuffer == null || !(canvasBuffer instanceof HTMLElement)) {
+            canvasBuffer = document.createElement('canvas');
+            if (!(canvasBuffer instanceof HTMLCanvasElement)) { continue; }
+            canvasBuffer.height = 640;
+            canvasBuffer.width = 640;
+            canvasBuffer.id = id;
+        }
+
+        if (!(canvasBuffer instanceof HTMLCanvasElement)) { continue; }
+        wheel.setCanvasBuffer(canvasBuffer);
+        wheel.makeBuffer();
+        
+        Wheel.CACHED_WHEELS[wheelName] = wheel;
+        cachedNumber++;
     }
-    Wheel.CACHED_WHEELS = cachedWheels;
+
+    console.log(`Cached ${Object.keys(Wheel.CACHED_WHEELS).length} Wheels!`);
 }
 
 
