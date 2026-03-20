@@ -13,7 +13,7 @@ def write_stuff(to_read, to_write):
         if re.search(r_ignore, line):
             continue
         else:
-            to_paste = str(line).replace("export function", "function").replace("export class", "class").replace("export const", "const")
+            to_paste = str(line).replace("export function", "function").replace("export class", "class").replace("export const", "const").replace("export let", "let")
             to_write.write(to_paste)
 
 

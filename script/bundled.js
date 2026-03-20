@@ -9,6 +9,8 @@
      tagFiltersDiv: document.getElementById("tag-filters"),
      textModeSwitch: document.getElementById("text-mode-switch"),
      textModeArea: document.getElementById("text-mode-area"),
+     textModeInput: document.getElementById("text-mode-area-input"),
+     textModeVisible: document.getElementById("text-mode-area-visible"),
      shuffleButton: document.getElementById("shuffle-button"),
      wheelEntriesCountSpan: document.getElementById("wheel-entries-count"),
      wheelEntriesWeightSpan: document.getElementById("wheel-entries-weight"),
@@ -54,24 +56,315 @@
      spinSoundSelect: document.getElementById("spin-sound-select"),
      winSoundSelect: document.getElementById("win-sound-select"),
 
+     // Wheel Select & Wheel Select Menu
+     wheelSelectBrowser: document.getElementById("wheel-select-browser"),
+     wheelSelectWheelMenu: document.getElementById("wheel-select-wheel-menu"),
+     wheelSelectWheelMenuDelete: document.getElementById("wheel-select-wheel-menu-delete"),
+
      // Debug Stuff
      fpsCounter: document.getElementById("fps")
 };
 
 
+/** @type {Wheel|null} The wheel being right clicked on in the wheel select */
+let selectedWheel = null;
+
+
+
+
+
+/**
+ * Imports the given wheel
+ * @param {Event} e The event given from opening a file browser
+ */
+function importWheel(e) {
+    if (e == null || e.target == null) { return; }
+    // @ts-ignore
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+        try {
+            const data = JSON.parse(reader.result ? String(reader.result) : "");
+            loadWheelData(data); // use the proper loader
+            showCard(`Imported ${file.name}`, 3);
+        } catch(err) {
+            console.error(err);
+            showCard("Failed to import file", 3);
+        }
+    };
+
+    reader.readAsText(file);
+    saveState();
+}
+
+
+/**
+ * Exports the wheel as a file
+ */
+function exportWheel() {
+    if (editingWheel == null) { return; }
+    const blob = new Blob(
+        [JSON.stringify(editingWheel.toJSON(), null, 2)],
+        { type: "application/json" }
+    );
+
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "wheel.json";
+    a.click();
+
+    URL.revokeObjectURL(a.href);
+
+    showCard("Exported!", 3);
+}
+
+
+/**
+ * Opens up the Save As modal
+ */
+function openSaveAsModal() {
+    // Opens up the dialogue
+    if (DOM_ELEMENTS.saveNameInput == null ||
+        DOM_ELEMENTS.saveModal == null ||
+        DOM_ELEMENTS.saveNameInput == null ||
+        !(DOM_ELEMENTS.saveNameInput instanceof HTMLInputElement) ||
+        editingWheel == null
+    ) { return; }
+    DOM_ELEMENTS.saveNameInput.value = editingWheel.getName();
+    showModal(DOM_ELEMENTS.saveModal);
+    DOM_ELEMENTS.saveNameInput.focus();
+
+    DOM_ELEMENTS.saveNameInput.addEventListener("keypress", (e) => {
+        if (e instanceof KeyboardEvent && e.key === "enter") {
+            saveAs();
+        }
+    });
+
+    // Makes sure the wheel is cached properly
+    saveState();
+}
+
+
+/**
+ * Opens up the save modal to save the current wheel.
+ */
+function saveAs() {
+    if (DOM_ELEMENTS.saveNameInput == null || 
+        !(DOM_ELEMENTS.saveNameInput instanceof HTMLInputElement) ||
+        editingWheel == null ||
+        DOM_ELEMENTS.saveModal == null
+    ) { return; }
+    const name = DOM_ELEMENTS.saveNameInput.value.trim();
+    if (!name) return;
+
+    const wheels = getSavedWheels();
+
+    const wheelJSON = editingWheel.toJSON();
+    wheelJSON['name'] = name;
+    wheels[name] = wheelJSON;
+
+    editingWheel.setName(name);
+    setSavedWheels(wheels);
+
+    DOM_ELEMENTS.saveModal.classList.add("hidden");
+    showCard("Saved Successfully!", 4);
+}
+
+
+function save() {
+    if (editingWheel == null) { return null; }
+    if (editingWheel.getName() == null || editingWheel.getName() == "") {
+        openSaveAsModal();
+        return;
+    }
+
+    const wheels = getSavedWheels();
+    wheels[editingWheel.getName()] = editingWheel.toJSON();
+
+    showCard(`Saved '${editingWheel.getName()}'`, 2)
+
+    setSavedWheels(wheels);
+}
+
+
+/**
+ * Copies the wheel being edited to the clipboard
+ */
+function copyWheelJSON() {
+    if (editingWheel == null) { return; }
+    navigator.clipboard.writeText(JSON.stringify(editingWheel.toJSON()));
+    showCard("Copied JSON", 2);
+}
+
+
+/**
+ * Opens up the wheel settings
+ */
+function openWheelSettings() {
+    if (editingWheel == null) { return; }
+
+    if (DOM_ELEMENTS.settingsModal != null)
+        showModal(DOM_ELEMENTS.settingsModal);
+
+    if (DOM_ELEMENTS.spinStrengthSlider != null && DOM_ELEMENTS.spinStrengthSlider instanceof HTMLInputElement)
+        DOM_ELEMENTS.spinStrengthSlider.value = String(editingWheel.spinStrength);
+    if (DOM_ELEMENTS.spinStrengthNumber != null && DOM_ELEMENTS.spinStrengthNumber instanceof HTMLInputElement)
+        DOM_ELEMENTS.spinStrengthNumber.value = String(editingWheel.spinStrength);
+
+    if (DOM_ELEMENTS.spinDurationSlider != null && DOM_ELEMENTS.spinDurationSlider instanceof HTMLInputElement)
+        DOM_ELEMENTS.spinDurationSlider.value = String(editingWheel.spinDuration * 0.001);
+    if (DOM_ELEMENTS.spinDurationNumber != null && DOM_ELEMENTS.spinDurationNumber instanceof HTMLInputElement)
+        DOM_ELEMENTS.spinDurationNumber.value = String(editingWheel.spinDuration * 0.001);
+
+    if (DOM_ELEMENTS.colorSchemeSelect != null && DOM_ELEMENTS.colorSchemeSelect instanceof HTMLInputElement)
+        DOM_ELEMENTS.colorSchemeSelect.value = Wheel.getColorSchemeFromFunction(editingWheel.colorScheme) || "";
+    if (DOM_ELEMENTS.spinSoundSelect != null && DOM_ELEMENTS.spinSoundSelect instanceof HTMLInputElement)
+        DOM_ELEMENTS.spinSoundSelect.value = Wheel.getSpinSoundFromAudio(editingWheel.spinSound) || "";
+    if (DOM_ELEMENTS.winSoundSelect != null && DOM_ELEMENTS.winSoundSelect instanceof HTMLInputElement)
+        DOM_ELEMENTS.winSoundSelect.value = Wheel.getWinSoundFromAudio(editingWheel.winSound) || "";
+}
+
+
+/** 
+ * Syncs the spin duration setting of the current wheel based on the slider
+ * @param {number} value The value to set the spin duration to (in seconds)
+ */
+function syncSpinDuration(value) {
+    if (editingWheel == null) { return; }
+    editingWheel.spinDuration = value*1000;
+    if (DOM_ELEMENTS.spinDurationSlider != null && DOM_ELEMENTS.spinDurationSlider instanceof HTMLInputElement)
+        DOM_ELEMENTS.spinDurationSlider.value = String(value);
+    if (DOM_ELEMENTS.spinDurationNumber != null && DOM_ELEMENTS.spinDurationNumber instanceof HTMLInputElement)
+        DOM_ELEMENTS.spinDurationNumber.value = String(value);
+    saveState();
+}
+
+
+/** 
+ * Syncs the spin strength setting of the current wheel based on the slider
+ * @param {number} value The value to set the spin strength to
+ */
+function syncSpinStrength(value) {
+    if (editingWheel == null) { return; }
+    editingWheel.spinStrength = value;
+    if (DOM_ELEMENTS.spinStrengthSlider != null && DOM_ELEMENTS.spinStrengthSlider instanceof HTMLInputElement)
+        DOM_ELEMENTS.spinStrengthSlider.value = String(value);
+    if (DOM_ELEMENTS.spinStrengthNumber != null && DOM_ELEMENTS.spinStrengthNumber instanceof HTMLInputElement)
+        DOM_ELEMENTS.spinStrengthNumber.value = String(value);
+    saveState();
+}
+
+
+/**
+ * Sets the color scheme of the current wheel
+ * @param {string} colorScheme The color scheme to set the editing wheel to
+ */
+function setColorScheme(colorScheme) {
+    if (editingWheel == null) { return; }
+    console.log(colorScheme.toLowerCase().replaceAll(" ", ""));
+    editingWheel.setColorScheme(Wheel.COLOR_SCHEMES[colorScheme]);
+    editingWheel.makeBuffer(true);
+    saveState();
+}
+
+
+/**
+ * Sets the spin sound of the current wheel
+ * @param {string} spinSound The key of the spin sound in Wheel.SPIN_SOUNDS
+ */
+function setSpinSound(spinSound) {
+    if (editingWheel == null) { return; }
+    editingWheel.setSpinSound(Wheel.SPIN_SOUNDS[spinSound]);
+    saveState();
+}
+
+
+/**
+ * Sets the win sound of the current wheel
+ * @param {string} winSound The key of the win sound in Wheel.WIN_SOUNDS
+ */
+function setWinSound(winSound) {
+    if (editingWheel == null) { return; }
+    editingWheel.setWinSound(Wheel.WIN_SOUNDS[winSound]);
+    saveState();
+}
+
+
+/**
+ * Makes the given modal appear
+ * @param {HTMLElement|null} modal The modal to make appear
+ */
+function showModal(modal) {
+    if (modal == null) { return; }
+    modal.classList.remove("hidden");
+
+    modal.addEventListener("click", (e) => {
+        if (e.target === modal) {
+            modal.classList.add("hidden");
+        }
+    });
+}
+
+
+/**
+ * Opens up the wheel select menu
+ * @param {Event} e The event that called this open
+ */
+function openWheelSelectMenu(e) {
+    if (DOM_ELEMENTS.wheelSelectWheelMenu == null || !(DOM_ELEMENTS.wheelSelectWheelMenu instanceof HTMLElement)) { return; }
+    e.preventDefault();
+
+    if (!(e instanceof PointerEvent)) { return; }
+    // Get mouse coordinates
+    const { clientX: mouseX, clientY: mouseY } = e;
+
+    // Position and show menu
+    DOM_ELEMENTS.wheelSelectWheelMenu.style.top = `${mouseY}px`;
+    DOM_ELEMENTS.wheelSelectWheelMenu.style.left = `${mouseX}px`;
+    DOM_ELEMENTS.wheelSelectWheelMenu.classList.remove('hidden');
+    if (!(e.target instanceof HTMLElement)) { return; }
+    const selectedJSON = getSavedWheels()[e.target.textContent];
+    if (selectedJSON != undefined) {
+        selectedWheel = Wheel.fromJSON(selectedJSON, true);
+    }
+    else {
+        selectedWheel = null;
+    }
+    
+}
+
+
+/**
+ * Deletes the selected wheel (if it exists)
+ * @param {Event} e The event of pressing the button
+ */
+function deleteSelectedWheel(e) {
+    if (selectedWheel == null) { return; }
+    deleteWheel(selectedWheel);
+}
+
+
 /**
  * Initializes all the DOM stuff given the primary wheel
- * @param {Wheel} editingWheel The wheel that is currently being edited
- * @param {() => void} saveState Call this to save the settings in the wheel
  * @param {() => void} spin Call this to spin the wheel.
- * @param {() => void} cacheSavedWheels Call this to cache all saved wheels.
  */
-function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
+function initializeDOMStuff(spin) {
     if (DOM_ELEMENTS.cancelSaveAsButton != null) {
-        DOM_ELEMENTS.cancelSaveAsButton.onclick = () => { if (DOM_ELEMENTS.saveModal !=  null) DOM_ELEMENTS.saveModal.classList.add("hidden")};
+        DOM_ELEMENTS.cancelSaveAsButton.onclick = () => {
+            if (DOM_ELEMENTS.saveModal !=  null) {
+                DOM_ELEMENTS.saveModal.classList.add("hidden");
+            }
+        };
     }
     if (DOM_ELEMENTS.closeLoadButton != null && DOM_ELEMENTS.loadModal !=  null) {
-        DOM_ELEMENTS.closeLoadButton.onclick = () => { if (DOM_ELEMENTS.loadModal !=  null) DOM_ELEMENTS.loadModal.classList.add("hidden")};
+        DOM_ELEMENTS.closeLoadButton.onclick = () => {
+            if (DOM_ELEMENTS.loadModal !=  null) {
+                DOM_ELEMENTS.loadModal.classList.add("hidden");
+            }
+        };
     }
 
     // General Modal
@@ -85,25 +378,7 @@ function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
     // Settings
     if (DOM_ELEMENTS.settingsButton != null) {
         DOM_ELEMENTS.settingsButton.onclick = () => {
-            if (DOM_ELEMENTS.settingsModal != null)
-                DOM_ELEMENTS.settingsModal.classList.remove("hidden");
-
-            if (DOM_ELEMENTS.spinStrengthSlider != null && DOM_ELEMENTS.spinStrengthSlider instanceof HTMLInputElement)
-                DOM_ELEMENTS.spinStrengthSlider.value = String(editingWheel.spinStrength);
-            if (DOM_ELEMENTS.spinStrengthNumber != null && DOM_ELEMENTS.spinStrengthNumber instanceof HTMLInputElement)
-                DOM_ELEMENTS.spinStrengthNumber.value = String(editingWheel.spinStrength);
-
-            if (DOM_ELEMENTS.spinDurationSlider != null && DOM_ELEMENTS.spinDurationSlider instanceof HTMLInputElement)
-                DOM_ELEMENTS.spinDurationSlider.value = String(editingWheel.spinDuration);
-            if (DOM_ELEMENTS.spinDurationNumber != null && DOM_ELEMENTS.spinDurationNumber instanceof HTMLInputElement)
-                DOM_ELEMENTS.spinDurationNumber.value = String(editingWheel.spinDuration);
-
-            if (DOM_ELEMENTS.colorSchemeSelect != null && DOM_ELEMENTS.colorSchemeSelect instanceof HTMLInputElement)
-                DOM_ELEMENTS.colorSchemeSelect.value = Wheel.getColorSchemeFromFunction(editingWheel.colorScheme) || "";
-            if (DOM_ELEMENTS.spinSoundSelect != null && DOM_ELEMENTS.spinSoundSelect instanceof HTMLInputElement)
-                DOM_ELEMENTS.spinSoundSelect.value = Wheel.getSpinSoundFromAudio(editingWheel.spinSound) || "";
-            if (DOM_ELEMENTS.winSoundSelect != null && DOM_ELEMENTS.winSoundSelect instanceof HTMLInputElement)
-                DOM_ELEMENTS.winSoundSelect.value = Wheel.getWinSoundFromAudio(editingWheel.winSound) || "";
+            openWheelSettings();
         };
     }
 
@@ -115,7 +390,7 @@ function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
     }
 
     // Spin the wheel
-    if (DOM_ELEMENTS.wheelWrapper != null && DOM_ELEMENTS.wheelWrapper instanceof HTMLInputElement) {
+    if (DOM_ELEMENTS.wheelWrapper != null) {
         DOM_ELEMENTS.wheelWrapper.onclick = () => { spin(); };
     }
     if (DOM_ELEMENTS.spinButton != null) {
@@ -125,20 +400,7 @@ function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
     // Import / Export
     if (DOM_ELEMENTS.exportButton != null) {
         DOM_ELEMENTS.exportButton.onclick = () => {
-            if (editingWheel == null) { return; }
-            const blob = new Blob(
-                [JSON.stringify(editingWheel.toJSON(), null, 2)],
-                { type: "application/json" }
-            );
-
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(blob);
-            a.download = "wheel.json";
-            a.click();
-
-            URL.revokeObjectURL(a.href);
-
-            showCard("Exported!", 3);
+            exportWheel();
         };
     }
     
@@ -148,201 +410,53 @@ function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
     
     if (DOM_ELEMENTS.importFile != null) {
         DOM_ELEMENTS.importFile.onchange = e => {
-            if (e == null || e.target == null) { return; }
-            // @ts-ignore
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-
-            reader.onload = () => {
-                try {
-                    const data = JSON.parse(reader.result ? String(reader.result) : "");
-                    loadWheelData(data); // use the proper loader
-                    showCard(`Imported ${file.name}`, 3);
-                } catch(err) {
-                    console.error(err);
-                    showCard("Failed to import file", 3);
-                }
-            };
-
-            reader.readAsText(file);
-            saveState();
+            importWheel(e);
         };
     }
 
     // Copy
     if (DOM_ELEMENTS.copyButton != null) {
         DOM_ELEMENTS.copyButton.onclick = () => {
-            if (editingWheel == null) { return; }
-            navigator.clipboard.writeText(JSON.stringify(editingWheel.toJSON()));
-            showCard("Copied JSON", 2);
+            copyWheelJSON();
         };
     }
     
     // Saving / Loading
-    function saveAs() {
-        if (DOM_ELEMENTS.saveNameInput == null ||
-            DOM_ELEMENTS.saveModal == null ||
-            DOM_ELEMENTS.saveNameInput == null ||
-            !(DOM_ELEMENTS.saveNameInput instanceof HTMLInputElement)
-        ) { return; }
-        DOM_ELEMENTS.saveNameInput.value = editingWheel.getName();
-        DOM_ELEMENTS.saveModal.classList.remove("hidden");
-        DOM_ELEMENTS.saveNameInput.focus();
-
-        saveState();
-        cacheSavedWheels();
-    }
-
-    if (DOM_ELEMENTS.confirmSaveAsButton != null) {
-        DOM_ELEMENTS.confirmSaveAsButton.onclick = () => {
-            if (DOM_ELEMENTS.saveNameInput == null || 
-                !(DOM_ELEMENTS.saveNameInput instanceof HTMLInputElement) ||
-                editingWheel == null ||
-                DOM_ELEMENTS.saveModal == null
-            ) { return; }
-            const name = DOM_ELEMENTS.saveNameInput.value.trim();
-            if (!name) return;
-
-            const wheels = getSavedWheels();
-
-            // @ts-ignore
-            const wheelJSON = editingWheel.toJSON();
-            wheelJSON['name'] = name;
-            wheels[name] = wheelJSON;
-
-            editingWheel.setName(name);
-            // @ts-ignore
-            setSavedWheels(wheels);
-
-            DOM_ELEMENTS.saveModal.classList.add("hidden");
-            showCard("Saved Successfully!", 4);
-        };
-    }
-
     if (DOM_ELEMENTS.cancelSaveAsButton != null) {
         DOM_ELEMENTS.cancelSaveAsButton.onclick = () => {
-            if (DOM_ELEMENTS.saveModal != null) { DOM_ELEMENTS.saveModal.classList.add("hidden"); }
-        }
-    }
-
-    if (DOM_ELEMENTS.saveWheelButton != null) {
-        DOM_ELEMENTS.saveWheelButton.onclick = () => {
-            if (editingWheel == null) { return null; }
-            if (editingWheel.getName() == null || editingWheel.getName() == "") {
-                saveAs();
-                return;
+            if (DOM_ELEMENTS.saveModal != null) { 
+                DOM_ELEMENTS.saveModal.classList.add("hidden");
             }
-
-            const wheels = getSavedWheels();
-            wheels[editingWheel.getName()] = editingWheel.toJSON();
-
-            showCard(`Saved '${editingWheel.getName()}'`, 2)
-
-            setSavedWheels(wheels);
-            cacheSavedWheels();
-        };
+        }
     }
 
     if (DOM_ELEMENTS.saveAsWheelButton != null) {
         DOM_ELEMENTS.saveAsWheelButton.onclick = () => {
+            openSaveAsModal();
+        };
+    }
+
+    if (DOM_ELEMENTS.confirmSaveAsButton != null) {
+        DOM_ELEMENTS.confirmSaveAsButton.onclick = () => {
             saveAs();
         };
-    }
-
-    if (DOM_ELEMENTS.loadWheelButton != null) {
-        DOM_ELEMENTS.loadWheelButton.onclick = () => {
-            if (DOM_ELEMENTS.loadModal == null) { return; }
-            DOM_ELEMENTS.loadModal.classList.remove("hidden");
-            rebuildLoadMenu();
-        };
-    }
-
-    function rebuildLoadMenu() {
-        if (DOM_ELEMENTS.loadList == null) { return; }
-        DOM_ELEMENTS.loadList.innerHTML = "";
-
-        const wheels = getSavedWheels();
-
-        Object.keys(wheels).forEach(name => {
-
-            const row = document.createElement("div");
-            row.className = "wheelRow";
-
-            const title = document.createElement("div");
-            title.className = "wheelName";
-            title.textContent = name;
-
-            const btns = document.createElement("div");
-            btns.className = "wheelButtons";
-
-            const loadButton = document.createElement("button");
-            loadButton.className = "primaryButton";
-            loadButton.textContent = "Load";
-            loadButton.onclick = () => {
-                if (DOM_ELEMENTS.loadModal == null) { return; }
-                loadWheel(name);
-                DOM_ELEMENTS.loadModal.classList.add("hidden");
-                showCard("Wheel Loaded", 3);
-            };
-
-            const delButton = document.createElement("button");
-            delButton.className = "deleteButton";
-            delButton.textContent = "Delete";
-            delButton.onclick = () => {
-                if (!confirm(`Delete "${name}"?`)) return;
-
-                const wheels = getSavedWheels();
-                delete wheels[name];
-                setSavedWheels(wheels);
-
-                rebuildLoadMenu();
-                showCard("Deleted", 3);
-            };
-
-            btns.append(loadButton, delButton);
-            row.append(title, btns);
-            if (DOM_ELEMENTS.loadList == null) { return; }
-            DOM_ELEMENTS.loadList.append(row);
-        });
-    }
-
-    /** @param {string} name The name of the wheel */
-    function loadWheel(name) {
-        if (editingWheel == null) { return; }
-        const wheels = getSavedWheels();
-        if (!wheels[name]) {
-            showCard(`Wheel "${name}" not found!`, 3);
-            return;
-        }
-
-        loadWheelData(wheels[name])
-        showCard(`Wheel "${name}" loaded!`, 3);
     }
 
     if (DOM_ELEMENTS.newWheelButton != null) {
         DOM_ELEMENTS.newWheelButton.onclick = () => {
             loadWheelData(Wheel.baseWheel().toJSON()); 
             showCard("Made New Wheel!", 2);
+            saveState();
         }
+    }
 
-        saveState();
+    if (DOM_ELEMENTS.saveWheelButton != null) {
+        DOM_ELEMENTS.saveWheelButton.onclick = () => {
+            save();
+        };
     }
 
     /* ------------ WHEEL SETTINGS ------------ */
-    
-    /** @param {number} value */
-    function syncSpinStrength(value) {
-        if (editingWheel == null) { return; }
-        editingWheel.spinStrength = value;
-        if (DOM_ELEMENTS.spinStrengthSlider != null && DOM_ELEMENTS.spinStrengthSlider instanceof HTMLInputElement)
-            DOM_ELEMENTS.spinStrengthSlider.value = String(value);
-        if (DOM_ELEMENTS.spinStrengthNumber != null && DOM_ELEMENTS.spinStrengthNumber instanceof HTMLInputElement)
-            DOM_ELEMENTS.spinStrengthNumber.value = String(value);
-        saveState();
-    }
-    
     if (DOM_ELEMENTS.spinStrengthSlider != null) {
         DOM_ELEMENTS.spinStrengthSlider.oninput = e => {
             if (e.target != null) {
@@ -361,21 +475,9 @@ function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
         };
     }
     
-    /** @param {number} value */
-    function syncSpinDuration(value) {
-        if (editingWheel == null) { return; }
-        editingWheel.spinDuration = value;
-        if (DOM_ELEMENTS.spinDurationSlider != null && DOM_ELEMENTS.spinDurationSlider instanceof HTMLInputElement)
-            DOM_ELEMENTS.spinDurationSlider.value = String(value);
-        if (DOM_ELEMENTS.spinDurationNumber != null && DOM_ELEMENTS.spinDurationNumber instanceof HTMLInputElement)
-            DOM_ELEMENTS.spinDurationNumber.value = String(value);
-        saveState();
-    }
-    
     if (DOM_ELEMENTS.spinDurationSlider != null) {
         DOM_ELEMENTS.spinDurationSlider.oninput = e => {
-            if (e.target != null) {
-                // @ts-ignore
+            if (e.target != null && e.target instanceof HTMLInputElement) {
                 syncSpinDuration(Number(e.target.value));
             }
         };
@@ -383,8 +485,7 @@ function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
 
     if (DOM_ELEMENTS.spinDurationNumber != null) {
         DOM_ELEMENTS.spinDurationNumber.oninput = e => {
-            if (e.target != null) {
-                // @ts-ignore
+            if (e.target != null && e.target instanceof HTMLInputElement) {
                 syncSpinDuration(Number(e.target.value));
             }
         };
@@ -392,36 +493,61 @@ function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
 
     if (DOM_ELEMENTS.colorSchemeSelect != null) {
         DOM_ELEMENTS.colorSchemeSelect.oninput = e => {
-            if (e.target != null) {
-                // @ts-ignore
-                editingWheel.colorScheme = Wheel.COLOR_SCHEMES[e.target.value]
-            }
-            saveState();
+            // @ts-ignore
+            setColorScheme(e.target.value);
         };
     }
 
     if (DOM_ELEMENTS.spinSoundSelect != null) {
         DOM_ELEMENTS.spinSoundSelect.oninput = e => {
-            if (e.target != null) {
-                // @ts-ignore
-                editingWheel.spinSound = Wheel.SPIN_SOUNDS[e.target.value]
-            }
-            saveState();
+            // @ts-ignore
+            setSpinSound(e.target.value);
         };
     }
 
     if (DOM_ELEMENTS.winSoundSelect != null) {
         DOM_ELEMENTS.winSoundSelect.oninput = e => {
-            if (e.target != null) {
-                // @ts-ignore
-                editingWheel.winSound = Wheel.WIN_SOUNDS[e.target.value]
-            }
-            saveState();
+            // @ts-ignore
+            setWinSound(e.target.value);
         };
     }
 
+    // Temporary canvas (will be deleted by restructureWheels())
     if (editingWheel != null && DOM_ELEMENTS.canvas != null && DOM_ELEMENTS.canvas instanceof HTMLCanvasElement) {
         editingWheel.setCanvas(DOM_ELEMENTS.canvas);
+    }
+
+    // Wheel Select Stuff
+    // if (DOM_ELEMENTS.wheelSelectBrowser != null && DOM_ELEMENTS.wheelSelectBrowser instanceof HTMLElement) {
+    //     DOM_ELEMENTS.wheelSelectBrowser.addEventListener('contextmenu', openWheelSelectMenu);
+    // }
+
+    document.addEventListener('click', () => {
+        if (DOM_ELEMENTS.wheelSelectWheelMenu != null && DOM_ELEMENTS.wheelSelectWheelMenu instanceof HTMLElement) {
+            DOM_ELEMENTS.wheelSelectWheelMenu.classList.add('hidden');
+        }
+    });
+
+    if (DOM_ELEMENTS.wheelSelectWheelMenuDelete != null && DOM_ELEMENTS.wheelSelectWheelMenuDelete instanceof HTMLElement) {
+        DOM_ELEMENTS.wheelSelectWheelMenuDelete.addEventListener('click', deleteSelectedWheel);
+    }
+
+
+    // Text Area Coloring
+    if (DOM_ELEMENTS.textModeInput != null && DOM_ELEMENTS.textModeVisible != null && DOM_ELEMENTS.textModeArea != null &&
+        DOM_ELEMENTS.textModeInput instanceof HTMLTextAreaElement
+    ) {
+        DOM_ELEMENTS.textModeInput.addEventListener('input', updateTextArea);
+
+        // Optional: sync scroll
+        DOM_ELEMENTS.textModeInput.addEventListener('scroll', () => {
+            if (DOM_ELEMENTS.textModeVisible == null || DOM_ELEMENTS.textModeArea == null) { return; }
+            DOM_ELEMENTS.textModeVisible.scrollTop = DOM_ELEMENTS.textModeArea.scrollTop;
+            DOM_ELEMENTS.textModeVisible.scrollLeft = DOM_ELEMENTS.textModeArea.scrollLeft;
+        });
+
+        // Focus div when user clicks
+        DOM_ELEMENTS.textModeVisible.addEventListener('click', () => { if (DOM_ELEMENTS.textModeArea != null) DOM_ELEMENTS.textModeArea.focus() });
     }
 }
 
@@ -465,14 +591,14 @@ class Wheel {
 
     /** @type {Record<string, HTMLAudioElement>} All the sounds that can be used while spinning */
     static SPIN_SOUNDS = {
-        "metalpipe": new Audio("asset/sound/metal_pipe.mp3"),
-        "silence": new Audio("asset/sound/silence.mp3")
+        metalpipe: new Audio("asset/sound/metal_pipe.mp3"),
+        silence: new Audio("asset/sound/silence.mp3")
     };
 
     /** @type {Record<string, HTMLAudioElement>} All the sounds that can be used after winning */
     static WIN_SOUNDS = {
-        "yippee": new Audio("asset/sound/yippee.mp3"),
-        "silence": new Audio("asset/sound/silence.mp3")
+        yippee: new Audio("asset/sound/yippee.mp3"),
+        silence: new Audio("asset/sound/silence.mp3")
     };
 
     /** @type {Record<string, Wheel>} A pointer to a collection of cached wheels (for speed ups) */
@@ -676,8 +802,9 @@ class Wheel {
 
     /**
      * This should only be called when the wheel needs to first be drawn.
+     * @param {boolean} force Forces the wheel to be redrawn anyway
      */
-    makeBuffer() {
+    makeBuffer(force=false) {
         // Cached wheels cannot be rebuffered
         if (this.isCached) {
             return;
@@ -1802,37 +1929,80 @@ async function _cacheSavedWheels() {
     cachedWheels = {};
     const savedJSONs = getSavedWheels();
     let cachedNumber = 0;
-    let name;
-    let id;
     for (const [wheelName, json] of Object.entries(savedJSONs)) {
         const wheel = Wheel.fromJSON(json, false, false);
-        name = wheel.name || "unknown";
-        id = `cached-wheel_${name.replaceAll("\"","'")}`;
-        let canvasBuffer = null;
-        // Try to find existing buffer
-        for (const cachedWheel of Object.values(Wheel.CACHED_WHEELS)) {
-            if (cachedWheel.name == name) {
-                canvasBuffer = cachedWheel.canvasBuffer;
-            }
-        }
-        // Make new canvas if it doesn't exit
-        if (canvasBuffer == null || !(canvasBuffer instanceof HTMLElement)) {
-            canvasBuffer = document.createElement('canvas');
-            if (!(canvasBuffer instanceof HTMLCanvasElement)) { continue; }
-            canvasBuffer.height = 640;
-            canvasBuffer.width = 640;
-            canvasBuffer.id = id;
-        }
-
-        if (!(canvasBuffer instanceof HTMLCanvasElement)) { continue; }
-        wheel.setCanvasBuffer(canvasBuffer);
-        wheel.makeBuffer();
-        
-        Wheel.CACHED_WHEELS[wheelName] = wheel;
+        cacheWheel(wheel);
         cachedNumber++;
     }
 
     console.log(`Cached ${Object.keys(Wheel.CACHED_WHEELS).length} Wheels!`);
+}
+
+
+/**
+ * Caches the given wheel (asyncronously)
+ * @param {Wheel} wheel The wheel to cache
+ */
+function cacheWheel(wheel) {
+    _cacheWheel(wheel);
+}
+
+
+/**
+ * Caches the given wheel asyncronously
+ * @param {Wheel} wheel The wheel to cache;
+ */
+async function _cacheWheel(wheel) {
+    const name = wheel.name || "unknown";
+    const id = `cached-wheel_${name.replaceAll("\"","'")}`;
+    let canvasBuffer = null;
+    // Try to find existing buffer
+    for (const cachedWheel of Object.values(Wheel.CACHED_WHEELS)) {
+        if (cachedWheel.name == name) {
+            canvasBuffer = cachedWheel.canvasBuffer;
+        }
+    }
+    // Make new canvas if it doesn't exit
+    if (canvasBuffer == null || !(canvasBuffer instanceof HTMLElement)) {
+        canvasBuffer = document.createElement('canvas');
+        if (!(canvasBuffer instanceof HTMLCanvasElement)) { return; }
+        canvasBuffer.height = 640;
+        canvasBuffer.width = 640;
+        canvasBuffer.id = id;
+    }
+
+    if (!(canvasBuffer instanceof HTMLCanvasElement)) { return; }
+    wheel.setCanvasBuffer(canvasBuffer);
+    wheel.makeBuffer();
+    
+    Wheel.CACHED_WHEELS[name] = wheel;
+}
+
+
+/**
+ * Reloads the wheel list (the wheel select)
+ */
+function reloadWheelBrowser() {
+    const root = document.createDocumentFragment();
+    const browser = document.getElementById('wheel-select-browser');
+    if (browser == null || !(browser instanceof HTMLElement)) { return; }
+
+    for (const wheel of Object.values(getSavedWheels())) {
+        const wheelItem = document.createElement('li');
+        wheelItem.className = 'wheel-select-wheel';
+        wheelItem.textContent = wheel.name;
+
+        // Add event listeners (for loading the next wheel)
+        wheelItem.addEventListener('click', (event) => {
+            loadWheelData(wheel);
+        });
+        
+        wheelItem.addEventListener('contextmenu', openWheelSelectMenu);
+
+        root.appendChild(wheelItem);
+    }
+
+    browser.replaceChildren(root);
 }
 
 
@@ -1895,6 +2065,7 @@ function rebuildTable() {
 
                 if (editingWheel != null) { editingWheel.updateEntries(editingWheel.enabledTags); }
                 updateTagFilters();
+                updateWheelEntriesCount();
             };
         });
 
@@ -1907,21 +2078,43 @@ function rebuildTable() {
             rebuildTable();
         };
 
+        function addNewRow() {
+            addWheelEntry();
+
+            if (DOM_ELEMENTS.tableBody == null || 
+                DOM_ELEMENTS.tableBody.lastChild == null ||
+                !(DOM_ELEMENTS.tableBody.lastChild instanceof HTMLElement) ||
+                DOM_ELEMENTS.tableBody.lastChild.childNodes[1] == null ||
+                !(DOM_ELEMENTS.tableBody.lastChild.childNodes[1] instanceof HTMLElement) ||
+                DOM_ELEMENTS.tableBody.lastChild.childNodes[1].childNodes[0] == null ||
+                !(DOM_ELEMENTS.tableBody.lastChild.childNodes[1].childNodes[0] instanceof HTMLElement)
+            ) { return; }
+            DOM_ELEMENTS.tableBody.lastChild.childNodes[1].childNodes[0].focus();
+        }
+
         // Whenever <Enter> is pressed, it makes a new element
         wheelEntryCell.addEventListener("keydown", e => {
             // Typescript why
             if (!(e instanceof KeyboardEvent)) { return; }
             if (e.key === "Enter") {
                 e.preventDefault();
-                const newWheelEntry = addWheelEntry();
-
-                if (DOM_ELEMENTS.tableBody == null || 
-                    DOM_ELEMENTS.tableBody.lastChild == null ||
-                    !(DOM_ELEMENTS.tableBody.lastChild instanceof HTMLElement))
-                {
-                    return;
-                }
-                DOM_ELEMENTS.tableBody.lastChild.focus();
+                addNewRow();
+            }
+        });
+        weightCell.addEventListener("keydown", e => {
+            // Typescript why
+            if (!(e instanceof KeyboardEvent)) { return; }
+            if (e.key === "Enter") {
+                e.preventDefault();
+                addNewRow();
+            }
+        });
+        tagsCell.addEventListener("keydown", e => {
+            // Typescript why
+            if (!(e instanceof KeyboardEvent)) { return; }
+            if (e.key === "Enter") {
+                e.preventDefault();
+                addNewRow();
             }
         });
 
@@ -1975,21 +2168,22 @@ function rebuildTable() {
  * Populates the textModeArea with all editing wheel entries
  */
 function populateTextModeArea() {
-    if (editingWheel == null || DOM_ELEMENTS.textModeArea == null) { return; }
-    if (!(DOM_ELEMENTS.textModeArea instanceof HTMLTextAreaElement)) { return; }
+    if (editingWheel == null || DOM_ELEMENTS.textModeInput == null) { return; }
+    if (!(DOM_ELEMENTS.textModeInput instanceof HTMLTextAreaElement)) { return; }
     const lines = editingWheel.getWheelEntries().map(wheelEntry => {
         return wheelEntry.toText();
     });
-    DOM_ELEMENTS.textModeArea.value = lines.join("\n");
+    DOM_ELEMENTS.textModeInput.value = lines.join("\n");
+    updateTextArea();
 }
 
 /**
  * This overwrites all existing wheel entries with the text area entries.
  */
 function convertTextModeAreaToWheelEntries() {
-    if (DOM_ELEMENTS.textModeArea == null || !(DOM_ELEMENTS.textModeArea instanceof HTMLTextAreaElement)) { return; }
+    if (DOM_ELEMENTS.textModeInput == null || !(DOM_ELEMENTS.textModeInput instanceof HTMLTextAreaElement)) { return; }
     if (editingWheel == null) { return null; }
-    const lines = DOM_ELEMENTS.textModeArea.value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const lines = DOM_ELEMENTS.textModeInput.value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     const newEntries = lines.map(line => {
         const parts = line.split("|").map(p => p.trim());
         return new WheelEntry(
@@ -2001,6 +2195,140 @@ function convertTextModeAreaToWheelEntries() {
     editingWheel.setEntries(newEntries);
     rebuildTable();
     saveState();
+}
+
+
+/**
+ * Takes in the given line of text and parses it into formatted.
+ * @param {string} text A line of text in the text area
+ * @returns {string} The formatted text using spans.
+ */
+function parseTextLine(text) {
+    let result = "";
+    let i = 0;
+    const len = text.length;
+
+    let mode = 0; // 0=values, 1=num, 2=tags
+
+    /**
+     * Wraps the given token
+     * @param {string} token The token (text) to wrap
+     */
+    function wrapToken(token) {
+        // Check if token contains one or more {...} blocks
+        let buffer = "";
+        let j = 0;
+        while (j < token.length) {
+            if (token[j] === "{") {
+                // flush any buffer before {
+                if (buffer.length > 0) {
+                    if (mode === 0) result += wrapInSpan(buffer, "tm_value");
+                    else if (mode === 1) result += wrapInSpan(buffer, "tm_weight");
+                    else if (mode === 2) result += wrapInSpan(buffer, "tm_tag");
+                    buffer = "";
+                }
+                // collect {...}
+                let block = "{";
+                j++;
+                while (j < token.length) {
+                    if (token[j] === "\\") { // escape
+                        block += token[j];
+                        j++;
+                        if (j < token.length) block += token[j];
+                        j++;
+                        continue;
+                    }
+                    block += token[j];
+                    if (token[j] === "}") { j++; break; }
+                    j++;
+                }
+                result += wrapInSpan(block, "tm_subwheel");
+            } else {
+                buffer += token[j];
+                j++;
+            }
+        }
+        // flush remaining
+        if (buffer.length > 0) {
+            if (mode === 0) result += wrapInSpan(buffer, "tm_value");
+            else if (mode === 1) result += wrapInSpan(buffer, "tm_weight");
+            else if (mode === 2) result += wrapInSpan(buffer, "tm_tag");
+        }
+    }
+
+    while (i < len) {
+        let char = text[i];
+
+        // Handle escape
+        if (char === "\\") {
+            i++;
+            if (i < len) {
+                result += text[i];
+                i++;
+            }
+            continue;
+        }
+
+        // Handle pipe
+        if (char === "|") {
+            result += wrapInSpan("|", "tm_pipe");
+            mode++;
+            i++;
+            continue;
+        }
+
+        // Collect a token until space or pipe
+        let token = "";
+        while (i < len && text[i] !== " " && text[i] !== "|") {
+            if (text[i] === "\\") {
+                token += text[i];
+                i++;
+                if (i < len) token += text[i];
+                i++;
+                continue;
+            }
+            token += text[i];
+            i++;
+        }
+
+        if (token.length > 0) wrapToken(token);
+
+        // preserve space
+        if (i < len && text[i] === " ") { result += " "; i++; }
+    }
+
+    return result;
+}
+
+
+/**
+ * Formats all the text in the text area correctly
+ */
+function updateTextArea() {
+    if (DOM_ELEMENTS.textModeInput == null || !(DOM_ELEMENTS.textModeInput instanceof HTMLTextAreaElement)) { return; }
+    if (DOM_ELEMENTS.textModeVisible == null) { return; }
+    const text = DOM_ELEMENTS.textModeInput.value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    let output = "";
+    const entries = text.split("\n");
+    for (const entry of entries) {
+        output += parseTextLine(entry) + "\n";
+    }
+
+    DOM_ELEMENTS.textModeVisible.innerHTML = output;
+}
+
+
+/**
+ * Wraps the given text in a span with the provided class
+ * @param {string} text The text to be wrapped in a span
+ * @param {string} className The class to give the span
+ * @return {string} The span in text form.
+ */
+function wrapInSpan(text, className) {
+    return `<span class="${className}">${text}</span>`
 }
 
 
@@ -2162,7 +2490,7 @@ function showWinner() {
     if (DOM_ELEMENTS.winnerText == null || DOM_ELEMENTS.modal == null || editingWheel == null) { return; }
     const winningWheelText = editingWheel.getWinningWheelText();
     DOM_ELEMENTS.winnerText.textContent = winningWheelText || "";
-    DOM_ELEMENTS.modal.classList.remove("hidden");
+    showModal(DOM_ELEMENTS.modal);
 }
 
 
@@ -2352,6 +2680,7 @@ function getSavedWheels() {
  */
 function setSavedWheels(json) {
     localStorage.setItem("savedWheels", JSON.stringify(json));
+    reloadWheelBrowser();
 }
 
 /**
@@ -2363,6 +2692,8 @@ function saveState() {
         "wheelState",
         JSON.stringify(editingWheel.toJSON())
     );
+    reloadWheelBrowser();
+    cacheWheel(editingWheel);
 }
 
 /**
@@ -2376,7 +2707,7 @@ function clearCache() {
  * Loads the most recently used wheel.
  * Also tries to update the wheel at the same time.
  */
-function loadState() {
+function loadMostRecentWheel() {
     const saved = localStorage.getItem("wheelState");
     if (saved && saved != "") {
         const wheel = JSON.parse(saved);
@@ -2405,6 +2736,20 @@ function loadWheelData(json) {
     if (DOM_ELEMENTS.canvas != null && DOM_ELEMENTS.canvas instanceof HTMLCanvasElement)
         editingWheel.setCanvas(DOM_ELEMENTS.canvas);
     rebuildTable();
+    populateTextModeArea();
+    restructureWheels();
+}
+
+
+/**
+ * Deletes the given wheel from the cache and more
+ * @param {Wheel} wheel The wheel to delete
+ */
+function deleteWheel(wheel) {
+    let all = JSON.parse(localStorage.getItem("savedWheels") || "{}");
+    if (wheel.name == null) { return; }
+    delete all[wheel.name];
+    setSavedWheels(all);
 }
 
 
@@ -2417,8 +2762,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // Update all cached wheels
     updateSavedWheels();
     // Attempt to load wheel from cache
-    loadState();
-    initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels);
+    loadMostRecentWheel();
+    initializeDOMStuff(spin);
 
     // Toggle Text Mode
     if (DOM_ELEMENTS.textModeSwitch != null)
@@ -2432,19 +2777,21 @@ document.addEventListener("DOMContentLoaded", () => {
         textModeActive = DOM_ELEMENTS.textModeSwitch.checked;
 
         if (textModeActive) {
-            DOM_ELEMENTS.tableBody.parentElement.classList.add("hidden"); // hide table container
+            if (DOM_ELEMENTS.tableBody.parentElement.parentElement != null)
+                DOM_ELEMENTS.tableBody.parentElement.parentElement.classList.add("hidden"); // hide table container
             DOM_ELEMENTS.textModeArea.classList.remove("hidden");
             populateTextModeArea();
         } else {
-            DOM_ELEMENTS.tableBody.parentElement.classList.remove("hidden");
+            if (DOM_ELEMENTS.tableBody.parentElement.parentElement != null)
+                DOM_ELEMENTS.tableBody.parentElement.parentElement.classList.remove("hidden");
             DOM_ELEMENTS.textModeArea.classList.add("hidden");
             convertTextModeAreaToWheelEntries(); // sync back into table
         }
     };
 
     // Autosave while typing
-    if (DOM_ELEMENTS.textModeArea != null)
-    DOM_ELEMENTS.textModeArea.addEventListener("input", () => {
+    if (DOM_ELEMENTS.textModeInput != null)
+    DOM_ELEMENTS.textModeInput.addEventListener("input", () => {
         convertTextModeAreaToWheelEntries();
     });
 
@@ -2458,4 +2805,5 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     setInterval(update, 10);
+    restructureWheels();
 });

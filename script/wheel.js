@@ -42,14 +42,14 @@ export class Wheel {
 
     /** @type {Record<string, HTMLAudioElement>} All the sounds that can be used while spinning */
     static SPIN_SOUNDS = {
-        "metalpipe": new Audio("asset/sound/metal_pipe.mp3"),
-        "silence": new Audio("asset/sound/silence.mp3")
+        metalpipe: new Audio("asset/sound/metal_pipe.mp3"),
+        silence: new Audio("asset/sound/silence.mp3")
     };
 
     /** @type {Record<string, HTMLAudioElement>} All the sounds that can be used after winning */
     static WIN_SOUNDS = {
-        "yippee": new Audio("asset/sound/yippee.mp3"),
-        "silence": new Audio("asset/sound/silence.mp3")
+        yippee: new Audio("asset/sound/yippee.mp3"),
+        silence: new Audio("asset/sound/silence.mp3")
     };
 
     /** @type {Record<string, Wheel>} A pointer to a collection of cached wheels (for speed ups) */
@@ -253,8 +253,9 @@ export class Wheel {
 
     /**
      * This should only be called when the wheel needs to first be drawn.
+     * @param {boolean} force Forces the wheel to be redrawn anyway
      */
-    makeBuffer() {
+    makeBuffer(force=false) {
         // Cached wheels cannot be rebuffered
         if (this.isCached) {
             return;

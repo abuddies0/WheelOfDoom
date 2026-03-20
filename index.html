@@ -10,7 +10,6 @@
     <!-- <div id="fps" style="position:absolute; left:10px; top:10px; justify-self:left; align-self:normal;">100</div> -->
     <div class="app">
         <!-- WHEEL -->
-        <button id="settings-button" class="settings-button">⚙</button>
         <main id="wheel-wrapper">
             <canvas id="wheel-connections" width="640" height="640"></canvas>
             <canvas id="main-wheel-canvas" width="640" height="640"></canvas>
@@ -21,7 +20,8 @@
             <aside class="wheel-entries">
                 <div class="wheel-entries-container">
                     <div class="wheel-entries-header">
-                        <label class="entry-mode-select">
+                        <label class="entry-mode-select has-tooltip">
+                            <div class="tooltip">Swap between Table/Text mode</div>
                             <input type="checkbox" id="text-mode-switch">
                             <span class="entry-mode-text"></span>
                         </label>
@@ -30,21 +30,29 @@
                             <div>Weight: <span id="wheel-entries-weight">0</span></div>
                         </div>
                         <button id="shuffle-button" class="secondary-button">
-                            <span class="material-icons-outlined">cached</span>
+                            <span style="width: 24px;" class="material-icons-outlined">cached</span>
+                        </button>
+                        <button id="settings-button" class="settings-button">
+                            <span style="width: 24px" class="material-icons-outlined">settings_thin</span>
                         </button>
                     </div>
-                    <textarea id="text-mode-area" class="hidden"></textarea>
-                    <table id="wheel-entry-table">
-                    <thead>
-                        <tr>
-                            <th style="width:50%">Entries</th>
-                            <th style="width:15%">Weight</th>
-                            <th style="width:35%">Tags</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+                    <div id="text-mode-area" class="hidden">
+                        <textarea id="text-mode-area-input"></textarea>
+                        <div id="text-mode-area-visible"></div>
+                    </div>
+                    <div id="wheel-entry-input-container">
+                        <table id="wheel-entry-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:calc(65%-10px);">Entries</th>
+                                    <th style="width:20px;">Weight</th>
+                                    <th style="width:calc(35%-10px);">Tags</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
                 </div>
                 <div class="tags-container">
                     <div id="tag-filters"></div>
@@ -102,51 +110,52 @@
     </div>
 
     <div id="settings-modal" class="modal hidden">
-        <h2>⚙ Wheel Settings</h2>
+        <div id="settings-modal-box" class="modal-box">
+            <h2>⚙ Wheel Settings</h2>
 
-        <label>
-            Wheel Color Scheme
-            <select id="color-scheme-select">
-                <option value="classic">Classic</option>
-                <option value="cool">Cool Blue</option>
-                <option value="dark">Dark Mode</option>
-                <option value="warm">Warm</option>
-            </select>
-        </label>
+            <div id="settings-container">
+                <label class="setting-dropdown">
+                    Wheel Color Scheme
+                    <select id="color-scheme-select">
+                        <option value="classic">Classic</option>
+                        <option value="cool">Cool Blue</option>
+                        <option value="dark">Dark Mode</option>
+                        <option value="warm">Warm</option>
+                    </select>
+                </label>
 
-        <label>
-            Wheel Spin Sound
-            <select id="spin-sound-select">
-                <option value="metalpipe">Metal Pipe</option>
-                <option value="silence">Silence</option>
-            </select>
-        </label>
+                <label class="setting-dropdown">
+                    Wheel Spin Sound
+                    <select id="spin-sound-select">
+                        <option value="metalpipe">Metal Pipe</option>
+                        <option value="silence">Silence</option>
+                    </select>
+                </label>
 
-        <label>
-            Wheel Victory Sound
-            <select id="win-sound-select">
-                <option value="yippee">Yippee</option>
-                <option value="silence">Silence</option>
-            </select>
-        </label>
+                <label class="setting-dropdown">
+                    Wheel Victory Sound
+                    <select id="win-sound-select">
+                        <option value="yippee">Yippee</option>
+                        <option value="silence">Silence</option>
+                    </select>
+                </label>
 
-        <div class="range-group">
-            <small>Spin Strength</small>
-            <span>0.5</span>
-            <input id="spin-strength-slider" type="range" min="0.5" max="40" step="0.5">
-            <span>40</span>
-            <input id="spin-strength-number" type="number">
-        </div>
+                <div class="range-group">
+                    <small>Spin Strength</small>
+                    <span>0.5</span>
+                    <input id="spin-strength-slider" type="range" min="0.5" max="40" step="0.1">
+                    <span>40</span>
+                    <input id="spin-strength-number" type="number">
+                </div>
 
-        <div class="range-group">
-            <small>Spin Duration (milliseconds)</small>
-            <span>50</span>
-            <input id="spin-duration-slider" type="range" min="50" max="60000" step="50">
-            <span>60000</span>
-            <input id="spin-duration-number" type="number">
-        </div>
-
-        <div class="settings-actions">
+                <div class="range-group">
+                    <small>Spin Duration</small>
+                    <span>0</span>
+                    <input id="spin-duration-slider" type="range" min="0" max="60" step="0.1">
+                    <span>60</span>
+                    <input id="spin-duration-number" type="number">
+                </div>
+            </div>
             <button id="close-settings-button" class="primary">Done</button>
         </div>
     </div>
@@ -163,17 +172,14 @@
         </div>
     </div>
 
-    <div id="load-modal" class="modal hidden">
-        <div class="modal-card">
-            <h2>Load Wheel</h2>
-            <div id="load-list" class="wheel-list"></div>
-            <div class="modal-actions">
-                <button id="close-load-button" class="secondary-button">Close</button>
-            </div>
-        </div>
-    </div>
-
     <div id="card-container"></div>
+
+    <!-- RIGHT CLICK MENUS -->
+     <div id="wheel-select-wheel-menu" class="hidden">
+        <ul>
+            <li id="wheel-select-wheel-menu-delete">Delete</li>
+        </ul>
+    </div>
 
     <script src="script/bundled.js"></script>
 </body>
