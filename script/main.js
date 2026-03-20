@@ -885,6 +885,37 @@ function addKeyBinds() {
         }
     }, false); 
 }
+
+
+/**
+ * Sets up tool tips for any element with the .has-tooltip class
+ */
+function setupTooltips() {
+    document.querySelectorAll('.has-tooltip').forEach(hasTooltip => {
+        const tooltip = hasTooltip.querySelector('.tooltip');
+        if (!tooltip) return;
+
+        hasTooltip.addEventListener('mouseenter', () => {
+            if (!(tooltip instanceof HTMLElement)) { return; }
+            const rect = hasTooltip.getBoundingClientRect();
+
+            document.body.appendChild(tooltip);
+            tooltip.style.display = 'block';
+            tooltip.style.position = 'fixed';
+
+            tooltip.style.left = rect.right + 'px';
+            tooltip.style.top = (rect.top - tooltip.offsetHeight) + 'px';
+        });
+
+        hasTooltip.addEventListener('mouseleave', () => {
+            if (!(tooltip instanceof HTMLElement)) { return; }
+            tooltip.style.display = 'none';
+            hasTooltip.appendChild(tooltip); // put it back
+        });
+    });
+}
+
+
 document.addEventListener("DOMContentLoaded", () => {
     cacheSavedWheels();
 
@@ -939,4 +970,5 @@ document.addEventListener("DOMContentLoaded", () => {
     restructureWheels();
 
     addKeyBinds();
+    setupTooltips();
 });
