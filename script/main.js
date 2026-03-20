@@ -107,6 +107,8 @@ function reloadWheelBrowser() {
 
         // Add event listeners (for loading the next wheel)
         wheelItem.addEventListener('click', (event) => {
+            if (!(event instanceof MouseEvent)) { return; }
+            if (event.shiftKey || event.ctrlKey || event.metaKey) { return; }
             loadWheelData(wheel);
         });
         
@@ -544,6 +546,7 @@ function updateTagFilters() {
  * Spins all necessary wheels
  */
 function spin() {
+    stopSpinning();
     clearSubWheels();
     if (editingWheel == null) { return; }
     editingWheel.spin(Date.now());
@@ -866,12 +869,11 @@ export function loadWheelData(json) {
 
 /**
  * Deletes the given wheel from the cache and more
- * @param {Wheel} wheel The wheel to delete
+ * @param {string} wheelName The name of the wheel to delete
  */
-export function deleteWheel(wheel) {
+export function deleteWheel(wheelName) {
     let all = JSON.parse(localStorage.getItem("savedWheels") || "{}");
-    if (wheel.name == null) { return; }
-    delete all[wheel.name];
+    delete all[wheelName];
     setSavedWheels(all);
 }
 

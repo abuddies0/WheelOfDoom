@@ -66,8 +66,11 @@
 };
 
 
-/** @type {Wheel|null} The wheel being right clicked on in the wheel select */
-let selectedWheel = null;
+/** @type {Array<string>} The names of every wheel being selected in the browser */
+let selectedWheels = new Array();
+
+/** @type {number|null} The last selected wheel select element (index) */
+let lastSelectedIndex = null;
 
 
 
@@ -345,10 +348,12 @@ function openWheelSelectMenu(e) {
     if (!(e.target instanceof HTMLElement)) { return; }
     const selectedJSON = getSavedWheels()[e.target.textContent];
     if (selectedJSON != undefined) {
-        selectedWheel = Wheel.fromJSON(selectedJSON, true);
+        selectedWheels.push(selectedJSON.name);
+        
     }
     else {
-        selectedWheel = null;
+        lastSelectedIndex = null;
+        selectedWheels = new Array();
     }
     
 }
@@ -358,9 +363,81 @@ function openWheelSelectMenu(e) {
  * Deletes the selected wheel (if it exists)
  * @param {Event} e The event of pressing the button
  */
-function deleteSelectedWheel(e) {
-    if (selectedWheel == null) { return; }
-    deleteWheel(selectedWheel);
+function deleteSelectedWheels(e) {
+    for (const wheel of selectedWheels) {
+        deleteWheel(wheel);
+    }
+    lastSelectedIndex = null;
+}
+
+
+/**
+ * Gets all the selectable wheels in the HTML DOM
+ * @returns {Array<HTMLElement>} A list of all selectable wheel HTML entries
+ */
+function getAllSelectableWheels() {
+    return Array.from(document.querySelectorAll(".wheel-select-wheel"));
+}
+
+
+/**
+ * Clears the last wheel selection
+ */
+function clearSelection() {
+    document.querySelectorAll(".wheel-select-wheel.selected")
+        .forEach(el => el.classList.remove("selected"));
+}
+
+
+/**
+ * Handles selecting a single wheel
+ * @param {HTMLElement} item The wheel that is selected
+ */
+function handleSingleSelect(item) {
+    clearSelection();
+    item.classList.add("selected");
+}
+
+
+/**
+ * Toggles the given item as selected
+ * @param {HTMLElement} item The wheel to be selected/unselected
+ */
+function handleCtrlSelect(item) {
+    item.classList.toggle("selected");
+}
+
+
+/**
+ * Toggles the given item as selected
+ * @param {Array<HTMLElement>} selectableWheels All the wheels in the wheel browser
+ * @param {number} currentIndex The starting index of the shift select
+ */
+function handleShiftSelect(selectableWheels, currentIndex) {
+    if (lastSelectedIndex == null) return;
+    if (currentIndex < 0) return;
+    if (lastSelectedIndex < 0) return;
+
+    clearSelection();
+
+    const start = Math.min(lastSelectedIndex, currentIndex);
+    const end = Math.max(lastSelectedIndex, currentIndex);
+
+    for (let i = start; i <= end; i++) {
+        const el = selectableWheels[i];
+        if (!el) continue;
+        el.classList.add("selected");
+    }
+}
+
+
+/**
+ * Updates the global list of selected wheels from the DOM
+ */
+function updateSelectedWheels() {
+    selectedWheels = Array.from(
+        document.querySelectorAll(".wheel-select-wheel.selected")
+    ).map(el => el.textContent.trim());
 }
 
 
@@ -524,6 +601,41 @@ function initializeDOMStuff(spin) {
     //     DOM_ELEMENTS.wheelSelectBrowser.addEventListener('contextmenu', openWheelSelectMenu);
     // }
 
+    if (DOM_ELEMENTS.wheelSelectBrowser != null && DOM_ELEMENTS.wheelSelectBrowser instanceof HTMLElement) {
+        DOM_ELEMENTS.wheelSelectBrowser.addEventListener("click", (e) => {
+            if (!(e instanceof MouseEvent) || e.target == null || !(e.target instanceof HTMLElement)) { return; }
+            if (e.target == DOM_ELEMENTS.wheelSelectBrowser) {
+                clearSelection();
+                return;
+            }
+            const item = e.target.closest(".wheel-select-wheel");
+            if (item == null || !(item instanceof HTMLElement)) return;
+
+            const selectableWheels = getAllSelectableWheels();
+            const index = selectableWheels.indexOf(item);
+
+            if (e.shiftKey) {
+                e.preventDefault();
+                if (lastSelectedIndex == null) {
+                    handleSingleSelect(item);
+                    lastSelectedIndex = index;
+                }
+                else {
+                    handleShiftSelect(selectableWheels, index);
+                }
+            } else if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                handleCtrlSelect(item);
+                lastSelectedIndex = index;
+            } else {
+                handleSingleSelect(item);
+                lastSelectedIndex = index;
+            }
+
+            updateSelectedWheels();
+        });
+    }
+
     document.addEventListener('click', () => {
         if (DOM_ELEMENTS.wheelSelectWheelMenu != null && DOM_ELEMENTS.wheelSelectWheelMenu instanceof HTMLElement) {
             DOM_ELEMENTS.wheelSelectWheelMenu.classList.add('hidden');
@@ -531,7 +643,7 @@ function initializeDOMStuff(spin) {
     });
 
     if (DOM_ELEMENTS.wheelSelectWheelMenuDelete != null && DOM_ELEMENTS.wheelSelectWheelMenuDelete instanceof HTMLElement) {
-        DOM_ELEMENTS.wheelSelectWheelMenuDelete.addEventListener('click', deleteSelectedWheel);
+        DOM_ELEMENTS.wheelSelectWheelMenuDelete.addEventListener('click', deleteSelectedWheels);
     }
 
 
@@ -2013,6 +2125,8 @@ function reloadWheelBrowser() {
 
         // Add event listeners (for loading the next wheel)
         wheelItem.addEventListener('click', (event) => {
+            if (!(event instanceof MouseEvent)) { return; }
+            if (event.shiftKey || event.ctrlKey || event.metaKey) { return; }
             loadWheelData(wheel);
         });
         
@@ -2450,6 +2564,7 @@ function updateTagFilters() {
  * Spins all necessary wheels
  */
 function spin() {
+    stopSpinning();
     clearSubWheels();
     if (editingWheel == null) { return; }
     editingWheel.spin(Date.now());
@@ -2772,12 +2887,11 @@ function loadWheelData(json) {
 
 /**
  * Deletes the given wheel from the cache and more
- * @param {Wheel} wheel The wheel to delete
+ * @param {string} wheelName The name of the wheel to delete
  */
-function deleteWheel(wheel) {
+function deleteWheel(wheelName) {
     let all = JSON.parse(localStorage.getItem("savedWheels") || "{}");
-    if (wheel.name == null) { return; }
-    delete all[wheel.name];
+    delete all[wheelName];
     setSavedWheels(all);
 }
 
