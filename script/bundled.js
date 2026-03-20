@@ -864,9 +864,10 @@ class Wheel {
             this.contextBuffer.rotate(startAngle - (this.sliceAngles[i])*0.5);
 
             // Only use lines if the slices will be too small
-            if (this.wheelEntries.length > 200) {
-                this.contextBuffer.fillStyle = "black";
-                this.contextBuffer.fillRect(radius+radius*0.1, radius, radius*0.85, 4);
+            if (this.sliceAngles[i] < 0.05) {
+                this.contextBuffer.fillStyle = "#111";
+                const offset = Math.max(1-text.length*0.025, 0.3) * radius;
+                this.contextBuffer.fillRect(offset, 0, radius*0.96-offset, this.sliceAngles[i]*40);
             }
             else {
                 // TODO: Mathematically determine font
