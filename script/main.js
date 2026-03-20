@@ -11,10 +11,10 @@ import { updateWheelJSON } from "./update.js";
 
 /** @type {boolean} True if editing entries through text */
 let textModeActive = false;
-/** @type {Record<string, Wheel>} A dictionary of all cached (saved) wheels. Is refreshed upon save. */
-let cachedWheels = {};
 /** @type {Array<Wheel>} All the wheels on screen. The first wheel in the list is the one being edited on the left */
 let wheels = new Array();
+/** @type {Record<string, Set<string>>} A record of all entries that are impossible to obtain from exclusive wheel {WHEEL_NAME: [ENTRY_1, ENTRY_2, ...]} */
+let excludedEntries = {};
 /** @type {Wheel|null} The wheel that is currently being edited. */
 export let editingWheel = null;
 
@@ -39,7 +39,6 @@ function cacheSavedWheels() {
  * @return {Promise<any>} A async promise to run to cache wheels.
  */
 async function _cacheSavedWheels() {
-    cachedWheels = {};
     const savedJSONs = getSavedWheels();
     let cachedNumber = 0;
     for (const [wheelName, json] of Object.entries(savedJSONs)) {
@@ -124,6 +123,19 @@ function reloadWheelBrowser() {
 
 
 /* ---------------- Wheel Entries ---------------- */
+
+/**
+ * Adds an entry to the exclusion list
+ * @param {string} wheelName The name of the wheel to exclude the entry from
+ * @param {string} entryValue The text (value) of the entry to exclude
+ */
+export function addExcludedEntry(wheelName, entryValue) {
+    if (entryValue == "") { return; }
+    if (!excludedEntries.hasOwnProperty(wheelName)) {
+        excludedEntries[wheelName] = new Set();
+    }
+    excludedEntries[wheelName].add(entryValue);
+}
 
 /**
  * Adds the given wheel entry (to the primary wheel by default (index 0))
@@ -549,7 +561,7 @@ function spin() {
     stopSpinning();
     clearSubWheels();
     if (editingWheel == null) { return; }
-    editingWheel.spin(Date.now());
+    editingWheel.spin(Date.now(), null, excludedEntries);
 }
 
 
@@ -560,6 +572,7 @@ function stopSpinning() {
     for (const wheel of wheels) {
         wheel.stopSpinning();
     }
+    excludedEntries = {};
 }
 
 
@@ -592,7 +605,7 @@ function update() {
         if (needsSubSpin) {
             restructureWheels();
             for (const wheel of wheels) {
-                if (!wheel.hasResult) { wheel.spin(Date.now()); }
+                if (!wheel.hasResult) { wheel.spin(Date.now(), null, excludedEntries); }
             }
         }
         else {

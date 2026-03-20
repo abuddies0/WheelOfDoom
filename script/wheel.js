@@ -1,6 +1,6 @@
 //@ts-check
 
-import { getSavedWheels } from "./main.js";
+import { getSavedWheels, addExcludedEntry } from "./main.js";
 
 /** @typedef {import("./update.js").SavedWheelEntry} SavedWheelEntry */
 /** @typedef {import("./update.js").WheelSettings} WheelSettings */
@@ -158,6 +158,8 @@ export class Wheel {
         this.subLevel = 0;
         /** @type {Wheel|null} The parent of this wheel */
         this.parentWheel = null;
+        /** @type {boolean} True if this entries on this wheel are exclusive (as in they can't be reobtained by other exclusives) */
+        this.isExclusive = false;
 
         /** @type {boolean} True if this wheel is from the cache. False otherwise. */
         this.isCached = false;
@@ -381,8 +383,9 @@ export class Wheel {
      * Spins the wheel at the given strength and duration
      * @param {number} time The time the wheel is spun in milliseconds
      * @param {string|null} riggedValue The rigged value of the wheel to land on.
+     * @param {Record<string, Set<string>>} excludedEntries A record of all entries that are impossible to obtain {WHEEL_NAME: [ENTRY_1, ENTRY_2, ...]}
      */
-    spin(time, riggedValue=null) {
+    spin(time, riggedValue=null, excludedEntries={}) {
         console.log("SPIN... THAT... WHEELLLLL!");
         if (this.isSpinning) { return; }
         this.isSpinning = true;
@@ -391,7 +394,7 @@ export class Wheel {
         this.spinEndTime = this.spinStartTime + this.spinDuration;
 
         // Pull wheel entry and set rotation accordingly
-        const pulled = this.pullWeightedWheelEntry();
+        const pulled = this.pullWeightedWheelEntry(excludedEntries);
         this.winningWheelEntry = pulled["wheelEntry"];
         // Failed to pull
         if (this.winningWheelEntry == null) {
@@ -401,7 +404,7 @@ export class Wheel {
         }
         // Add all necessary subwheels
         this.subWheels = {};
-        this.addSubWheels(Array.from(this.winningWheelEntry.getValue().matchAll(/(?<=\{).+?(?=\})/g)).map(e => e[0]));
+        this.addSubWheels(Wheel.findSubWheels(this.winningWheelEntry.value));
         if (Object.keys(this.subWheels).length != 0) { this.needsSubSpin = true; }
         // Setup rotation shenanigans
         this.rotation = this.rotation % (2 * Math.PI);
@@ -412,6 +415,7 @@ export class Wheel {
 
         this.spinSound.play();
         this.initialRotation = this.rotation;
+        if (this.isExclusive) { addExcludedEntry(this.getName(), this.winningWheelEntry.value); }
     }
     
 
@@ -427,6 +431,49 @@ export class Wheel {
     }
 
 
+    /**
+     * Finds all subwheels from the given text
+     * @param {string} text The text from the entry to scrape the subwheels of
+     * @return {Array<string>} An array of all the subwheels without the curly braces
+     */
+    static findSubWheels(text) {
+        let subWheels = new Array();
+        let i = 0;
+        let inSubWheel = false;
+        let currentSubWheel = "";
+        let c;
+        while (i < text.length) {
+            c = text.charAt(i);
+            if (inSubWheel) {
+                if (c == '\\') {
+                    // just skip to the next place
+                    i++;
+                    currentSubWheel += text.charAt(i);
+                }
+                else if (c == '}') {
+                    inSubWheel = false;
+                    subWheels.push(currentSubWheel);
+                    currentSubWheel = "";
+                }
+                else {
+                    currentSubWheel += c;
+                }
+            }
+            // Delimiter
+            if (c == '\\') {
+                // just skip to the next place
+                i++;
+            }
+            else if (c == '{') {
+                inSubWheel = true;
+            }
+            i++;
+        }
+        
+        return subWheels;
+    }
+
+
     static BAGEL = 0;
 
     /**
@@ -437,8 +484,15 @@ export class Wheel {
         // Only add subwheels if they exist
         const savedWheels = getSavedWheels();
         const names = Object.keys(savedWheels);
+        let isExclusive = false;
 
-        for (const subName of wheelNames) {
+        for (let subName of wheelNames) {
+            isExclusive = false;
+            // Handle exclusives
+            if (subName.length > 0 && subName.charAt(0) == "!") {
+                isExclusive = true;
+                subName = subName.substring(1, subName.length);
+            }
             // Skip if the wheel doesn't exist
             if (!names.includes(subName)) {
                 console.log(`Wheel {${subName}} doesn't exist.`)
@@ -448,6 +502,7 @@ export class Wheel {
             subWheel.isSub = true;
             subWheel.subLevel = this.subLevel + 1;
             subWheel.parentWheel = this;
+            subWheel.isExclusive = isExclusive;
             this.subWheels[String(Wheel.BAGEL)] = subWheel;
             Wheel.BAGEL++;
         }
@@ -483,9 +538,10 @@ export class Wheel {
 
     /**
      * Pulls a wheel entry using the weight system.
+     * @param {Record<string, Set<string>>} excludedEntries A record of all entries that are impossible to obtain {WHEEL_NAME: [ENTRY_1, ENTRY_2, ...]}
      * @return @typedef {Object} @property {number} weight @property {WheelEntry|null} wheelEntry The wheel entry that got pulled and the winning weight
      */
-    pullWeightedWheelEntry() {
+    pullWeightedWheelEntry(excludedEntries) {
         // Account for rigging
         if (this.riggedAmount > 0 && this.riggedWheelEntry && this.enabledWheelEntries.map(wheelEntry => wheelEntry.getValue()).includes(this.riggedWheelEntry.getValue())) {
             this.riggedAmount--;
@@ -501,7 +557,37 @@ export class Wheel {
             return {"weight": weight, "wheelEntry": this.riggedWheelEntry};
         }
 
-        // Not rigged (or failed to rig)
+        // Not rigged (or failed to rig), but exclusive
+        if (this.isExclusive && excludedEntries.hasOwnProperty(this.getName())) {
+            // Filter out all excluded wheel entries
+            const filteredWheelEntries = this.wheelEntries.map((wheelEntry) => {
+                if (excludedEntries[this.getName()].has(wheelEntry.getValue())) {
+                    return;
+                }
+                else {
+                    return wheelEntry;
+                }
+            });
+            // If there are no entries left, return nothing
+            if (filteredWheelEntries.length == 0) { return {"weight": 0, "wheelEntry": new WheelEntry("", 0, new Array())}; }
+           
+            const tempTotalWeight = filteredWheelEntries.reduce((acc, wheelEntry) => {
+                if (!wheelEntry) { return acc; }
+                return acc + wheelEntry.getWeight();
+            }, 0);
+            const winningWeight = tempTotalWeight * Math.random();
+            let tempWeight = winningWeight;
+
+            for (const wheelEntry of filteredWheelEntries) {
+                if (!wheelEntry) { continue; }
+                tempWeight -= wheelEntry.getWeight();
+                if (tempWeight <= 0) {
+                    return {"weight": winningWeight, "wheelEntry": wheelEntry};
+                }
+            }
+        }
+
+        // Not rigged or exclusive
         const winningWeight = this.totalWeight * Math.random();
         let tempWeight = winningWeight;
 
