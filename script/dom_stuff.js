@@ -543,9 +543,9 @@ export function initializeDOMStuff(spin) {
 
         // Optional: sync scroll
         DOM_ELEMENTS.textModeInput.addEventListener('scroll', () => {
-            if (DOM_ELEMENTS.textModeVisible == null || DOM_ELEMENTS.textModeArea == null) { return; }
-            DOM_ELEMENTS.textModeVisible.scrollTop = DOM_ELEMENTS.textModeArea.scrollTop;
-            DOM_ELEMENTS.textModeVisible.scrollLeft = DOM_ELEMENTS.textModeArea.scrollLeft;
+            if (DOM_ELEMENTS.textModeVisible == null || DOM_ELEMENTS.textModeInput == null) { return; }
+            DOM_ELEMENTS.textModeVisible.scrollTop = DOM_ELEMENTS.textModeInput.scrollTop;
+            DOM_ELEMENTS.textModeVisible.scrollLeft = DOM_ELEMENTS.textModeInput.scrollTop;
         });
 
         // Focus div when user clicks
