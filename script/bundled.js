@@ -579,8 +579,8 @@ class Wheel {
         spinStrength: 12,
         spinDuration: 2000,
         colorScheme: "classic",
-        spinSound: "metalpipe",
-        winSound: "yippee"
+        spinSound: "classic",
+        winSound: "jonnahwhimsy"
     };
 
     /** @type {Record<string, (i:number, l:number)=>string>} All the schemes this wheel can take*/
@@ -593,13 +593,16 @@ class Wheel {
 
     /** @type {Record<string, HTMLAudioElement>} All the sounds that can be used while spinning */
     static SPIN_SOUNDS = {
-        metalpipe: new Audio("asset/sound/metal_pipe.mp3"),
+        classic: new Audio("asset/sound/spin/classic.mp3"),
+        metalpipe: new Audio("asset/sound/spin/metal_pipe.mp3"),
         silence: new Audio("asset/sound/silence.mp3")
     };
 
     /** @type {Record<string, HTMLAudioElement>} All the sounds that can be used after winning */
     static WIN_SOUNDS = {
-        yippee: new Audio("asset/sound/yippee.mp3"),
+        jonnahwhimsy: new Audio("asset/sound/win/jonnah_whimsy.mp3"),
+        wow: new Audio("asset/sound/win/wow.mp3"),
+        yippee: new Audio("asset/sound/win/yippee.mp3"),
         silence: new Audio("asset/sound/silence.mp3")
     };
 
