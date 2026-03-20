@@ -137,11 +137,17 @@ function openSaveAsModal() {
     showModal(DOM_ELEMENTS.saveModal);
     DOM_ELEMENTS.saveNameInput.focus();
 
-    DOM_ELEMENTS.saveNameInput.addEventListener("keypress", (e) => {
-        if (e instanceof KeyboardEvent && e.key === "enter") {
+    /**
+     * @param {Event} e The keyboard event
+     */
+    let enterSpeedUp = (e) => {
+        if (e instanceof KeyboardEvent && e.key === "Enter") {
             saveAs();
+            if (DOM_ELEMENTS.saveNameInput != null && DOM_ELEMENTS.saveNameInput instanceof HTMLElement)
+            DOM_ELEMENTS.saveNameInput.removeEventListener("keypress", enterSpeedUp);
         }
-    });
+    }
+    DOM_ELEMENTS.saveNameInput.addEventListener("keypress", enterSpeedUp);
 
     // Makes sure the wheel is cached properly
     saveState();
@@ -170,7 +176,7 @@ function saveAs() {
     setSavedWheels(wheels);
 
     DOM_ELEMENTS.saveModal.classList.add("hidden");
-    showCard("Saved Successfully!", 4);
+    showCard(`Saved '${name}' Successfully!`, 4);
 }
 
 
@@ -352,21 +358,6 @@ function deleteSelectedWheel(e) {
  * @param {() => void} spin Call this to spin the wheel.
  */
 function initializeDOMStuff(spin) {
-    if (DOM_ELEMENTS.cancelSaveAsButton != null) {
-        DOM_ELEMENTS.cancelSaveAsButton.onclick = () => {
-            if (DOM_ELEMENTS.saveModal !=  null) {
-                DOM_ELEMENTS.saveModal.classList.add("hidden");
-            }
-        };
-    }
-    if (DOM_ELEMENTS.closeLoadButton != null && DOM_ELEMENTS.loadModal !=  null) {
-        DOM_ELEMENTS.closeLoadButton.onclick = () => {
-            if (DOM_ELEMENTS.loadModal !=  null) {
-                DOM_ELEMENTS.loadModal.classList.add("hidden");
-            }
-        };
-    }
-
     // General Modal
     if (DOM_ELEMENTS.closeModalButton != null) {
         DOM_ELEMENTS.closeModalButton.onclick = () => {
@@ -2754,6 +2745,24 @@ function deleteWheel(wheel) {
 
 
 /* ---------------- Init/Main ---------------- */
+
+
+/**
+ * Adds a bunch of keybinds to the website including...
+ * Ctrl + S: save
+ */
+function addKeyBinds() {
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "s" && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+            e.preventDefault();
+            save();
+        }
+        if (e.key.toLowerCase() === "s" && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+            e.preventDefault();
+            openSaveAsModal();
+        }
+    }, false); 
+}
 document.addEventListener("DOMContentLoaded", () => {
     cacheSavedWheels();
 
@@ -2806,4 +2815,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     setInterval(update, 10);
     restructureWheels();
+
+    addKeyBinds();
 });

@@ -127,7 +127,7 @@ function exportWheel() {
 /**
  * Opens up the Save As modal
  */
-function openSaveAsModal() {
+export function openSaveAsModal() {
     // Opens up the dialogue
     if (DOM_ELEMENTS.saveNameInput == null ||
         DOM_ELEMENTS.saveModal == null ||
@@ -139,11 +139,17 @@ function openSaveAsModal() {
     showModal(DOM_ELEMENTS.saveModal);
     DOM_ELEMENTS.saveNameInput.focus();
 
-    DOM_ELEMENTS.saveNameInput.addEventListener("keypress", (e) => {
-        if (e instanceof KeyboardEvent && e.key === "enter") {
+    /**
+     * @param {Event} e The keyboard event
+     */
+    let enterSpeedUp = (e) => {
+        if (e instanceof KeyboardEvent && e.key === "Enter") {
             saveAs();
+            if (DOM_ELEMENTS.saveNameInput != null && DOM_ELEMENTS.saveNameInput instanceof HTMLElement)
+            DOM_ELEMENTS.saveNameInput.removeEventListener("keypress", enterSpeedUp);
         }
-    });
+    }
+    DOM_ELEMENTS.saveNameInput.addEventListener("keypress", enterSpeedUp);
 
     // Makes sure the wheel is cached properly
     saveState();
@@ -172,11 +178,11 @@ function saveAs() {
     setSavedWheels(wheels);
 
     DOM_ELEMENTS.saveModal.classList.add("hidden");
-    showCard("Saved Successfully!", 4);
+    showCard(`Saved '${name}' Successfully!`, 4);
 }
 
 
-function save() {
+export function save() {
     if (editingWheel == null) { return null; }
     if (editingWheel.getName() == null || editingWheel.getName() == "") {
         openSaveAsModal();
@@ -354,21 +360,6 @@ function deleteSelectedWheel(e) {
  * @param {() => void} spin Call this to spin the wheel.
  */
 export function initializeDOMStuff(spin) {
-    if (DOM_ELEMENTS.cancelSaveAsButton != null) {
-        DOM_ELEMENTS.cancelSaveAsButton.onclick = () => {
-            if (DOM_ELEMENTS.saveModal !=  null) {
-                DOM_ELEMENTS.saveModal.classList.add("hidden");
-            }
-        };
-    }
-    if (DOM_ELEMENTS.closeLoadButton != null && DOM_ELEMENTS.loadModal !=  null) {
-        DOM_ELEMENTS.closeLoadButton.onclick = () => {
-            if (DOM_ELEMENTS.loadModal !=  null) {
-                DOM_ELEMENTS.loadModal.classList.add("hidden");
-            }
-        };
-    }
-
     // General Modal
     if (DOM_ELEMENTS.closeModalButton != null) {
         DOM_ELEMENTS.closeModalButton.onclick = () => {

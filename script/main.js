@@ -1,6 +1,6 @@
 // @ts-check
 import { Wheel, WheelEntry } from './wheel.js'
-import { initializeDOMStuff, DOM_ELEMENTS, openWheelSelectMenu, showModal } from './dom_stuff.js'
+import { initializeDOMStuff, DOM_ELEMENTS, openWheelSelectMenu, showModal, save, openSaveAsModal } from './dom_stuff.js'
 import { updateWheelJSON } from "./update.js";
 
 
@@ -867,6 +867,24 @@ export function deleteWheel(wheel) {
 
 
 /* ---------------- Init/Main ---------------- */
+
+
+/**
+ * Adds a bunch of keybinds to the website including...
+ * Ctrl + S: save
+ */
+function addKeyBinds() {
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "s" && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+            e.preventDefault();
+            save();
+        }
+        if (e.key.toLowerCase() === "s" && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+            e.preventDefault();
+            openSaveAsModal();
+        }
+    }, false); 
+}
 document.addEventListener("DOMContentLoaded", () => {
     cacheSavedWheels();
 
@@ -919,4 +937,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     setInterval(update, 10);
     restructureWheels();
+
+    addKeyBinds();
 });
