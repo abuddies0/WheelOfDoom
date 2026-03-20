@@ -309,11 +309,22 @@ export function showModal(modal) {
     if (modal == null) { return; }
     modal.classList.remove("hidden");
 
-    modal.addEventListener("click", (e) => {
-        if (e.target === modal) {
+    /** @param {Event} e The event that closed the modal */
+    let closeModal = (e) => {
+        if (e instanceof KeyboardEvent && e.key == "Escape") {
             modal.classList.add("hidden");
+            removeEventListener("click", closeModal);
+            removeEventListener("keydown", closeModal);
         }
-    });
+        if (e instanceof MouseEvent && e.target === modal) {
+            modal.classList.add("hidden");
+            removeEventListener("click", closeModal);
+            removeEventListener("keydown", closeModal);
+        }
+    }
+
+    modal.addEventListener("click", closeModal);
+    modal.addEventListener("keydown", closeModal);
 }
 
 
