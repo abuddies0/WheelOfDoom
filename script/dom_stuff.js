@@ -324,7 +324,7 @@ export function showModal(modal) {
     }
 
     modal.addEventListener("click", closeModal);
-    modal.addEventListener("keydown", closeModal);
+    document.addEventListener("keydown", closeModal);
 }
 
 
