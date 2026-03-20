@@ -963,6 +963,19 @@ class Wheel {
         this.spinSound.play();
         this.initialRotation = this.rotation;
     }
+    
+
+    /**
+     * Forces the wheel to stop spinning.
+     * Does not return any results.
+     */
+    stopSpinning() {
+        this.isSpinning = false;
+        this.hasResult = false;
+        this.spinSound.pause();
+        this.winSound.pause();
+    }
+
 
     static BAGEL = 0;
 
@@ -2442,6 +2455,16 @@ function spin() {
 }
 
 
+/**
+ * Makes all wheels stop spinning
+ */
+function stopSpinning() {
+    for (const wheel of wheels) {
+        wheel.stopSpinning();
+    }
+}
+
+
 /* ---------------- Drawing ---------------- */
 
 /**
@@ -2764,16 +2787,33 @@ function deleteWheel(wheel) {
 /**
  * Adds a bunch of keybinds to the website including...
  * Ctrl + S: save
+ * Ctrl + Shift + S: save as
+ * Ctrl + m : make new wheel
+ * Ctrl + ' ' : spin
  */
 function addKeyBinds() {
     document.addEventListener("keydown", (e) => {
+        // Ctrl + S : Save
         if (e.key === "s" && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
             e.preventDefault();
             save();
         }
+        // Ctrl + Shift + S : Save As
         if (e.key.toLowerCase() === "s" && (e.metaKey || e.ctrlKey) && e.shiftKey) {
             e.preventDefault();
             openSaveAsModal();
+        }
+        // Ctrl + m: Make New Wheel
+        if (e.key.toLowerCase() === "m" && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+            e.preventDefault();
+            loadWheelData(Wheel.baseWheel().toJSON()); 
+            showCard("Made New Wheel!", 2);
+            saveState();
+        }
+        // Ctrl + ' ' : Spin
+        if (e.key.toLowerCase() === " " && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+            e.preventDefault();
+            spin();
         }
     }, false); 
 }
@@ -2857,6 +2897,14 @@ document.addEventListener("DOMContentLoaded", () => {
         rebuildTable();
         showCard("Shuffled!", 1);
     };
+
+    // Force stop spinning
+    document.addEventListener("keydown", (e) => {
+        if (!(e instanceof KeyboardEvent)) { return; }
+        if (e.key === "Escape") {
+            stopSpinning();
+        }
+    });
 
     setInterval(update, 10);
     restructureWheels();

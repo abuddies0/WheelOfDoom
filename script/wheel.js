@@ -412,6 +412,19 @@ export class Wheel {
         this.spinSound.play();
         this.initialRotation = this.rotation;
     }
+    
+
+    /**
+     * Forces the wheel to stop spinning.
+     * Does not return any results.
+     */
+    stopSpinning() {
+        this.isSpinning = false;
+        this.hasResult = false;
+        this.spinSound.pause();
+        this.winSound.pause();
+    }
+
 
     static BAGEL = 0;
 
