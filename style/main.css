@@ -56,9 +56,38 @@ body {
     height: fit-content;
 }
 
-/* .has-tooltip:hover + .tooltip {
-  display: block;
-} */
+
+/* -------- HELP ------------------------*/
+
+#help-button {
+    position: absolute;
+    top: 32px;
+    left: 32px;
+    width: 40px;
+    height: 40px;
+    background-color: #222222;
+    color: #eeeeee;
+    font-weight: bold;
+    text-align: center;
+    align-content: center;
+    justify-content: center;
+}
+
+
+#help-modal-box {
+    max-width: max(40%, 320px);
+    overflow: auto;
+    display: grid;
+    grid-template-rows: auto 40px;
+}
+
+#help-content ul, #help-content ol {
+    justify-self: left;
+}
+
+#help-content li {
+    text-align: left;
+}
 
 
 /*--------- WHEEL SELECT ----------------*/

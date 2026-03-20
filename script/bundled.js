@@ -19,7 +19,6 @@
      newWheelButton: document.getElementById("new-wheel-button"),
      saveWheelButton: document.getElementById("save-wheel-button"),
      saveAsWheelButton: document.getElementById("save-as-wheel-button"),
-     loadWheelButton: document.getElementById("load-wheel-button"),
      copyButton: document.getElementById("copy-button"),
      importFile: document.getElementById("import-file"),
      importButton: document.getElementById("import-button"),
@@ -37,15 +36,12 @@
 
      confirmSaveAsButton: document.getElementById("confirm-save-as-button"),
      cancelSaveAsButton: document.getElementById("cancel-save-as-button"),
-
-     savedWheelsList: document.getElementById("saved-wheels-list"),
-     closeLoadButton: document.getElementById("close-load-button"),
-
      saveModal: document.getElementById("save-modal"),
-     loadModal: document.getElementById("load-modal"),
-
      saveNameInput: document.getElementById("save-name-input"),
-     loadList: document.getElementById("load-list"),
+
+     helpModal: document.getElementById("help-modal"),
+     openHelpButton: document.getElementById("help-button"),
+     closeHelpButton: document.getElementById("close-help-button"),
 
     // Wheel Settings
      spinStrengthSlider: document.getElementById("spin-strength-slider"),
@@ -354,8 +350,16 @@ function openWheelSelectMenu(e) {
     else {
         lastSelectedIndex = null;
         selectedWheels = new Array();
-    }
-    
+    }   
+}
+
+
+/**
+ * Opens up the help modal
+ */
+function openHelpModal() {
+    if (DOM_ELEMENTS.helpModal == null || !(DOM_ELEMENTS.helpModal instanceof HTMLElement)) { return; }
+    showModal(DOM_ELEMENTS.helpModal);
 }
 
 
@@ -451,6 +455,20 @@ function initializeDOMStuff(spin) {
         DOM_ELEMENTS.closeModalButton.onclick = () => {
             if (DOM_ELEMENTS.modal == null) { return; }
             DOM_ELEMENTS.modal.classList.add("hidden");
+        };
+    }
+
+    // Help
+    if (DOM_ELEMENTS.openHelpButton != null) {
+        DOM_ELEMENTS.openHelpButton.onclick = () => {
+            openHelpModal();
+        };
+    }
+
+    if (DOM_ELEMENTS.closeHelpButton != null) {
+        DOM_ELEMENTS.closeHelpButton.onclick = () => {
+            if (DOM_ELEMENTS.helpModal == null) { return null; }
+            DOM_ELEMENTS.helpModal.classList.add("hidden");
         };
     }
 

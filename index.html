@@ -98,6 +98,11 @@
                 </ul>
             </div>
         </main>
+
+        <button id="help-button" class="has-tooltip">
+            ?
+            <div class="tooltip">Help</div>
+        </button>
     <!-- END APP -->
     </div>
 
@@ -174,6 +179,35 @@
                 <button id="cancel-save-as-button" class="secondary-button">Cancel</button>
                 <button id="confirm-save-as-button" class="primary-button">Save</button>
             </div>
+        </div>
+    </div>
+
+    <div id="help-modal" class="modal hidden">
+        <div id="help-modal-box" class="modal-box">
+            <div id="help-content">
+                <h2>How To Use</h2>
+                <p>Using the wheel is simple:</p>
+                <ol>
+                    <li>Add some entries in the table</li>
+                    <li>Tweak the settings with the gear icon</li>
+                    <li>Save the wheel with the floppy disk</li>
+                    <li>Spin the wheel by clicking on it or [Spin]!</li>
+                </ol>
+                <h2>Fun Features</h2>
+                <p>Putting a wheel name in curly brackets inside an entry like {New Wheel} causes a subspin if that entry is landed on! 
+                    (note: make sure the wheel is saved!!)
+                    Try making a wheel with the entries "0, 1, {Subwheel Test}{Subwheel Test}" and save it as "Subwheel Test"!
+                </p>
+                <h2>Shortcuts</h2>
+                <ul>
+                    <li>Ctrl + S: Save the wheel</li>
+                    <li>Ctrl + Shift + S: Save the wheel as a new wheel</li>
+                    <li>Ctrl + M: Make a new wheel</li>
+                    <li>Ctrl + SPACE: Spin the wheel</li>
+                    <li>Escape: Close most modals and stop the wheel</li>
+                </ul>
+            </div>
+            <button id="close-help-button" class="primary">Done</button>
         </div>
     </div>
 
