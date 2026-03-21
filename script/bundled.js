@@ -1,347 +1,573 @@
  // @ts-check
 
  const DOM_ELEMENTS = {
-     canvas: document.getElementById("mainWheelCanvas"),
+     canvas: document.getElementById("main-wheel-canvas"),
      wheelWrapper: document.getElementById("wheel-wrapper"),
 
     // Wheel Entries
-     tableBody: document.querySelector("#wheelEntryTable tbody"),
-     tagFiltersDiv: document.getElementById("tagFilters"),
-     textModeSwitch: document.getElementById("textModeSwitch"),
-     textModeArea: document.getElementById("textModeArea"),
-     shuffleBtn: document.getElementById("shuffleBtn"),
-     wheelEntriesCountSpan: document.getElementById("wheelEntriesCount"),
+     tableBody: document.querySelector("#wheel-entry-table tbody"),
+     tagFiltersDiv: document.getElementById("tag-filters"),
+     textModeSwitch: document.getElementById("text-mode-switch"),
+     textModeArea: document.getElementById("text-mode-area"),
+     textModeInput: document.getElementById("text-mode-area-input"),
+     textModeVisible: document.getElementById("text-mode-area-visible"),
+     shuffleButton: document.getElementById("shuffle-button"),
+     wheelEntriesCountSpan: document.getElementById("wheel-entries-count"),
+     wheelEntriesWeightSpan: document.getElementById("wheel-entries-weight"),
 
     // General toolbar buttons
-     newWheelBtn: document.getElementById("newWheelBtn"),
-     saveWheelBtn: document.getElementById("saveWheelBtn"),
-     saveAsWheelBtn: document.getElementById("saveAsWheelBtn"),
-     loadWheelBtn: document.getElementById("loadWheelBtn"),
-     copyBtn: document.getElementById("copyBtn"),
-     importFile: document.getElementById("importFile"),
-     importBtn: document.getElementById("importBtn"),
-     exportBtn: document.getElementById("exportBtn"),
-     spinBtn: document.getElementById("spinBtn"),
+     newWheelButton: document.getElementById("new-wheel-button"),
+     saveWheelButton: document.getElementById("save-wheel-button"),
+     saveAsWheelButton: document.getElementById("save-as-wheel-button"),
+     driveSaveButton: document.getElementById("save-to-drive-button"),
+     driveLoadButton: document.getElementById("load-from-drive-button"),
+     copyButton: document.getElementById("copy-button"),
+     importFile: document.getElementById("import-file"),
+     importButton: document.getElementById("import-button"),
+     exportButton: document.getElementById("export-button"),
+     spinButton: document.getElementById("spin-button"),
 
     // Modals
-     modal: document.getElementById("winnerModal"),
-     winnerText: document.getElementById("winnerText"),
-     closeModalBtn: document.getElementById("closeModalBtn"),
+     modal: document.getElementById("winner-modal"),
+     winnerText: document.getElementById("winner-text"),
+     closeModalButton: document.getElementById("close-modal-button"),
 
-     settingsBtn: document.getElementById("settingsBtn"),
-     settingsModal: document.getElementById("settingsModal"),
-     closeSettingsBtn: document.getElementById("closeSettingsBtn"),
+     settingsButton: document.getElementById("settings-button"),
+     settingsModal: document.getElementById("settings-modal"),
+     closeSettingsButton: document.getElementById("close-settings-button"),
 
-     confirmSaveAsBtn: document.getElementById("confirmSaveAsBtn"),
-     cancelSaveAsBtn: document.getElementById("cancelSaveAsBtn"),
+     confirmSaveAsButton: document.getElementById("confirm-save-as-button"),
+     cancelSaveAsButton: document.getElementById("cancel-save-as-button"),
+     saveModal: document.getElementById("save-modal"),
+     saveNameInput: document.getElementById("save-name-input"),
 
-     savedWheelsList: document.getElementById("savedWheelsList"),
-     closeLoadBtn: document.getElementById("closeLoadBtn"),
-
-     saveModal: document.getElementById("saveModal"),
-     loadModal: document.getElementById("loadModal"),
-
-     saveNameInput: document.getElementById("saveNameInput"),
-     loadList: document.getElementById("loadList"),
+     helpModal: document.getElementById("help-modal"),
+     openHelpButton: document.getElementById("help-button"),
+     closeHelpButton: document.getElementById("close-help-button"),
 
     // Wheel Settings
-     spinStrengthSlider: document.getElementById("spinStrengthSlider"),
-     spinStrengthNumber: document.getElementById("spinStrengthNumber"),
-     spinDurationSlider: document.getElementById("spinDurationSlider"),
-     spinDurationNumber: document.getElementById("spinDurationNumber"),
-     colorSchemeSelect: document.getElementById("colorSchemeSelect"),
-     spinSoundSelect: document.getElementById("spinSoundSelect"),
-     victorySoundSelect: document.getElementById("victorySoundSelect"),
+     spinStrengthSlider: document.getElementById("spin-strength-slider"),
+     spinStrengthNumber: document.getElementById("spin-strength-number"),
+     spinDurationSlider: document.getElementById("spin-duration-slider"),
+     spinDurationNumber: document.getElementById("spin-duration-number"),
+     colorSchemeSelect: document.getElementById("color-scheme-select"),
+     spinSoundSelect: document.getElementById("spin-sound-select"),
+     winSoundSelect: document.getElementById("win-sound-select"),
+
+     // Wheel Select & Wheel Select Menu
+     wheelSelectBrowser: document.getElementById("wheel-select-browser"),
+     wheelSelectWheelMenu: document.getElementById("wheel-select-wheel-menu"),
+     wheelSelectWheelMenuDelete: document.getElementById("wheel-select-wheel-menu-delete"),
 
      // Debug Stuff
      fpsCounter: document.getElementById("fps")
 };
 
 
+/** @type {Array<string>} The names of every wheel being selected in the browser */
+let selectedWheels = new Array();
+
+/** @type {number|null} The last selected wheel select element (index) */
+let lastSelectedIndex = null;
+
+
+
+
+
 /**
- * Initializes all the DOM stuff given the primary wheel
- * @param {Wheel} editingWheel The wheel that is currently being edited
- * @param {() => void} saveState Call this to save the settings in the wheel
- * @param {() => void} spin Call this to spin the wheel.
- * @param {() => void} cacheSavedWheels Call this to cache all saved wheels.
+ * Imports the given wheel
+ * @param {Event} e The event given from opening a file browser
  */
-function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
-    if (DOM_ELEMENTS.cancelSaveAsBtn != null) {
-        DOM_ELEMENTS.cancelSaveAsBtn.onclick = () => { if (DOM_ELEMENTS.saveModal !=  null) DOM_ELEMENTS.saveModal.classList.add("hidden")};
+function importWheel(e) {
+    if (e == null || e.target == null) { return; }
+    // @ts-ignore
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+        try {
+            const data = JSON.parse(reader.result ? String(reader.result) : "");
+            loadWheelData(data); // use the proper loader
+            showCard(`Imported ${file.name}`, 3);
+        } catch(err) {
+            console.error(err);
+            showCard("Failed to import file", 3);
+        }
+    };
+
+    reader.readAsText(file);
+    saveState();
+}
+
+
+/**
+ * Exports the wheel as a file
+ */
+function exportWheel() {
+    if (editingWheel == null) { return; }
+    const blob = new Blob(
+        [JSON.stringify(editingWheel.toJSON(), null, 2)],
+        { type: "application/json" }
+    );
+
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "wheel.json";
+    a.click();
+
+    URL.revokeObjectURL(a.href);
+
+    showCard("Exported!", 3);
+}
+
+
+/**
+ * Opens up the Save As modal
+ */
+function openSaveAsModal() {
+    // Opens up the dialogue
+    if (DOM_ELEMENTS.saveNameInput == null ||
+        DOM_ELEMENTS.saveModal == null ||
+        DOM_ELEMENTS.saveNameInput == null ||
+        !(DOM_ELEMENTS.saveNameInput instanceof HTMLInputElement) ||
+        editingWheel == null
+    ) { return; }
+    DOM_ELEMENTS.saveNameInput.value = editingWheel.getName();
+    showModal(DOM_ELEMENTS.saveModal);
+    DOM_ELEMENTS.saveNameInput.focus();
+
+    /**
+     * @param {Event} e The keyboard event
+     */
+    let enterSpeedUp = (e) => {
+        if (e instanceof KeyboardEvent && e.key === "Enter") {
+            saveAs();
+            if (DOM_ELEMENTS.saveNameInput != null && DOM_ELEMENTS.saveNameInput instanceof HTMLElement)
+            DOM_ELEMENTS.saveNameInput.removeEventListener("keypress", enterSpeedUp);
+        }
     }
-    if (DOM_ELEMENTS.closeLoadBtn != null && DOM_ELEMENTS.loadModal !=  null) {
-        DOM_ELEMENTS.closeLoadBtn.onclick = () => { if (DOM_ELEMENTS.loadModal !=  null) DOM_ELEMENTS.loadModal.classList.add("hidden")};
+    DOM_ELEMENTS.saveNameInput.addEventListener("keypress", enterSpeedUp);
+
+    // Makes sure the wheel is cached properly
+    saveState();
+}
+
+
+/**
+ * Opens up the save modal to save the current wheel.
+ */
+function saveAs() {
+    if (DOM_ELEMENTS.saveNameInput == null || 
+        !(DOM_ELEMENTS.saveNameInput instanceof HTMLInputElement) ||
+        editingWheel == null ||
+        DOM_ELEMENTS.saveModal == null
+    ) { return; }
+    const name = DOM_ELEMENTS.saveNameInput.value.trim();
+    if (!name) return;
+
+    const wheels = getSavedWheels();
+
+    const wheelJSON = editingWheel.toJSON();
+    wheelJSON['name'] = name;
+    wheels[name] = wheelJSON;
+
+    editingWheel.setName(name);
+    setSavedWheels(wheels);
+
+    DOM_ELEMENTS.saveModal.classList.add("hidden");
+    showCard(`Saved '${name}' Successfully!`, 4);
+}
+
+
+function save() {
+    if (editingWheel == null) { return null; }
+    if (editingWheel.getName() == null || editingWheel.getName() == "") {
+        openSaveAsModal();
+        return;
     }
 
+    const wheels = getSavedWheels();
+    wheels[editingWheel.getName()] = editingWheel.toJSON();
+
+    showCard(`Saved '${editingWheel.getName()}'`, 2)
+
+    setSavedWheels(wheels);
+}
+
+
+/**
+ * Copies the wheel being edited to the clipboard
+ */
+function copyWheelJSON() {
+    if (editingWheel == null) { return; }
+    navigator.clipboard.writeText(JSON.stringify(editingWheel.toJSON()));
+    showCard("Copied JSON", 2);
+}
+
+
+/**
+ * Opens up the wheel settings
+ */
+function openWheelSettings() {
+    if (editingWheel == null) { return; }
+
+    if (DOM_ELEMENTS.settingsModal != null)
+        showModal(DOM_ELEMENTS.settingsModal);
+
+    if (DOM_ELEMENTS.spinStrengthSlider != null && DOM_ELEMENTS.spinStrengthSlider instanceof HTMLInputElement)
+        DOM_ELEMENTS.spinStrengthSlider.value = String(editingWheel.spinStrength);
+    if (DOM_ELEMENTS.spinStrengthNumber != null && DOM_ELEMENTS.spinStrengthNumber instanceof HTMLInputElement)
+        DOM_ELEMENTS.spinStrengthNumber.value = String(editingWheel.spinStrength);
+
+    if (DOM_ELEMENTS.spinDurationSlider != null && DOM_ELEMENTS.spinDurationSlider instanceof HTMLInputElement)
+        DOM_ELEMENTS.spinDurationSlider.value = String(editingWheel.spinDuration * 0.001);
+    if (DOM_ELEMENTS.spinDurationNumber != null && DOM_ELEMENTS.spinDurationNumber instanceof HTMLInputElement)
+        DOM_ELEMENTS.spinDurationNumber.value = String(editingWheel.spinDuration * 0.001);
+
+    if (DOM_ELEMENTS.colorSchemeSelect != null && DOM_ELEMENTS.colorSchemeSelect instanceof HTMLInputElement)
+        DOM_ELEMENTS.colorSchemeSelect.value = Wheel.getColorSchemeFromFunction(editingWheel.colorScheme) || "";
+    if (DOM_ELEMENTS.spinSoundSelect != null && DOM_ELEMENTS.spinSoundSelect instanceof HTMLInputElement)
+        DOM_ELEMENTS.spinSoundSelect.value = Wheel.getSpinSoundFromAudio(editingWheel.spinSound) || "";
+    if (DOM_ELEMENTS.winSoundSelect != null && DOM_ELEMENTS.winSoundSelect instanceof HTMLInputElement)
+        DOM_ELEMENTS.winSoundSelect.value = Wheel.getWinSoundFromAudio(editingWheel.winSound) || "";
+}
+
+
+/** 
+ * Syncs the spin duration setting of the current wheel based on the slider
+ * @param {number} value The value to set the spin duration to (in seconds)
+ */
+function syncSpinDuration(value) {
+    if (editingWheel == null) { return; }
+    editingWheel.spinDuration = value*1000;
+    if (DOM_ELEMENTS.spinDurationSlider != null && DOM_ELEMENTS.spinDurationSlider instanceof HTMLInputElement)
+        DOM_ELEMENTS.spinDurationSlider.value = String(value);
+    if (DOM_ELEMENTS.spinDurationNumber != null && DOM_ELEMENTS.spinDurationNumber instanceof HTMLInputElement)
+        DOM_ELEMENTS.spinDurationNumber.value = String(value);
+    saveState();
+}
+
+
+/** 
+ * Syncs the spin strength setting of the current wheel based on the slider
+ * @param {number} value The value to set the spin strength to
+ */
+function syncSpinStrength(value) {
+    if (editingWheel == null) { return; }
+    editingWheel.spinStrength = value;
+    if (DOM_ELEMENTS.spinStrengthSlider != null && DOM_ELEMENTS.spinStrengthSlider instanceof HTMLInputElement)
+        DOM_ELEMENTS.spinStrengthSlider.value = String(value);
+    if (DOM_ELEMENTS.spinStrengthNumber != null && DOM_ELEMENTS.spinStrengthNumber instanceof HTMLInputElement)
+        DOM_ELEMENTS.spinStrengthNumber.value = String(value);
+    saveState();
+}
+
+
+/**
+ * Sets the color scheme of the current wheel
+ * @param {string} colorScheme The color scheme to set the editing wheel to
+ */
+function setColorScheme(colorScheme) {
+    if (editingWheel == null) { return; }
+    console.log(colorScheme.toLowerCase().replaceAll(" ", ""));
+    editingWheel.setColorScheme(Wheel.COLOR_SCHEMES[colorScheme]);
+    editingWheel.makeBuffer(true);
+    saveState();
+}
+
+
+/**
+ * Sets the spin sound of the current wheel
+ * @param {string} spinSound The key of the spin sound in Wheel.SPIN_SOUNDS
+ */
+function setSpinSound(spinSound) {
+    if (editingWheel == null) { return; }
+    editingWheel.setSpinSound(Wheel.SPIN_SOUNDS[spinSound]);
+    saveState();
+}
+
+
+/**
+ * Sets the win sound of the current wheel
+ * @param {string} winSound The key of the win sound in Wheel.WIN_SOUNDS
+ */
+function setWinSound(winSound) {
+    if (editingWheel == null) { return; }
+    editingWheel.setWinSound(Wheel.WIN_SOUNDS[winSound]);
+    saveState();
+}
+
+
+/**
+ * Makes the given modal appear
+ * @param {HTMLElement|null} modal The modal to make appear
+ */
+function showModal(modal) {
+    if (modal == null) { return; }
+    modal.classList.remove("hidden");
+
+    /** @param {Event} e The event that closed the modal */
+    let closeModal = (e) => {
+        if (e instanceof KeyboardEvent && e.key == "Escape") {
+            modal.classList.add("hidden");
+            removeEventListener("click", closeModal);
+            removeEventListener("keydown", closeModal);
+        }
+        if (e instanceof MouseEvent && e.target === modal) {
+            modal.classList.add("hidden");
+            removeEventListener("click", closeModal);
+            removeEventListener("keydown", closeModal);
+        }
+    }
+
+    modal.addEventListener("click", closeModal);
+    document.addEventListener("keydown", closeModal);
+}
+
+
+/**
+ * Opens up the wheel select menu
+ * @param {Event} e The event that called this open
+ */
+function openWheelSelectMenu(e) {
+    if (DOM_ELEMENTS.wheelSelectWheelMenu == null || !(DOM_ELEMENTS.wheelSelectWheelMenu instanceof HTMLElement)) { return; }
+    e.preventDefault();
+
+    if (!(e instanceof PointerEvent)) { return; }
+    // Get mouse coordinates
+    const { clientX: mouseX, clientY: mouseY } = e;
+
+    // Position and show menu
+    DOM_ELEMENTS.wheelSelectWheelMenu.style.top = `${mouseY}px`;
+    DOM_ELEMENTS.wheelSelectWheelMenu.style.left = `${mouseX}px`;
+    DOM_ELEMENTS.wheelSelectWheelMenu.classList.remove('hidden');
+    if (!(e.target instanceof HTMLElement)) { return; }
+    const selectedJSON = getSavedWheels()[e.target.textContent];
+    if (selectedJSON != undefined) {
+        selectedWheels.push(selectedJSON.name);
+        
+    }
+    else {
+        lastSelectedIndex = null;
+        selectedWheels = new Array();
+    }   
+}
+
+
+/**
+ * Opens up the help modal
+ */
+function openHelpModal() {
+    if (DOM_ELEMENTS.helpModal == null || !(DOM_ELEMENTS.helpModal instanceof HTMLElement)) { return; }
+    showModal(DOM_ELEMENTS.helpModal);
+}
+
+
+/**
+ * Deletes the selected wheel (if it exists)
+ * @param {Event} e The event of pressing the button
+ */
+function deleteSelectedWheels(e) {
+    for (const wheel of selectedWheels) {
+        deleteWheel(wheel);
+    }
+    lastSelectedIndex = null;
+}
+
+
+/**
+ * Gets all the selectable wheels in the HTML DOM
+ * @returns {Array<HTMLElement>} A list of all selectable wheel HTML entries
+ */
+function getAllSelectableWheels() {
+    return Array.from(document.querySelectorAll(".wheel-select-wheel"));
+}
+
+
+/**
+ * Clears the last wheel selection
+ */
+function clearSelection() {
+    document.querySelectorAll(".wheel-select-wheel.selected")
+        .forEach(el => el.classList.remove("selected"));
+}
+
+
+/**
+ * Handles selecting a single wheel
+ * @param {HTMLElement} item The wheel that is selected
+ */
+function handleSingleSelect(item) {
+    clearSelection();
+    item.classList.add("selected");
+}
+
+
+/**
+ * Toggles the given item as selected
+ * @param {HTMLElement} item The wheel to be selected/unselected
+ */
+function handleCtrlSelect(item) {
+    item.classList.toggle("selected");
+}
+
+
+/**
+ * Toggles the given item as selected
+ * @param {Array<HTMLElement>} selectableWheels All the wheels in the wheel browser
+ * @param {number} currentIndex The starting index of the shift select
+ */
+function handleShiftSelect(selectableWheels, currentIndex) {
+    if (lastSelectedIndex == null) return;
+    if (currentIndex < 0) return;
+    if (lastSelectedIndex < 0) return;
+
+    clearSelection();
+
+    const start = Math.min(lastSelectedIndex, currentIndex);
+    const end = Math.max(lastSelectedIndex, currentIndex);
+
+    for (let i = start; i <= end; i++) {
+        const el = selectableWheels[i];
+        if (!el) continue;
+        el.classList.add("selected");
+    }
+}
+
+
+/**
+ * Updates the global list of selected wheels from the DOM
+ */
+function updateSelectedWheels() {
+    selectedWheels = Array.from(
+        document.querySelectorAll(".wheel-select-wheel.selected")
+    ).map(el => el.textContent.trim());
+}
+
+
+/**
+ * Initializes all the DOM stuff given the primary wheel
+ * @param {() => void} spin Call this to spin the wheel.
+ */
+function initializeDOMStuff(spin) {
     // General Modal
-    if (DOM_ELEMENTS.closeModalBtn != null) {
-        DOM_ELEMENTS.closeModalBtn.onclick = () => {
+    if (DOM_ELEMENTS.closeModalButton != null) {
+        DOM_ELEMENTS.closeModalButton.onclick = () => {
             if (DOM_ELEMENTS.modal == null) { return; }
             DOM_ELEMENTS.modal.classList.add("hidden");
         };
     }
 
-    // Settings
-    if (DOM_ELEMENTS.settingsBtn != null) {
-        DOM_ELEMENTS.settingsBtn.onclick = () => {
-            if (DOM_ELEMENTS.settingsModal != null)
-                DOM_ELEMENTS.settingsModal.classList.remove("hidden");
-
-            if (DOM_ELEMENTS.spinStrengthSlider != null && DOM_ELEMENTS.spinStrengthSlider instanceof HTMLInputElement)
-                DOM_ELEMENTS.spinStrengthSlider.value = String(editingWheel.spinStrength);
-            if (DOM_ELEMENTS.spinStrengthNumber != null && DOM_ELEMENTS.spinStrengthNumber instanceof HTMLInputElement)
-                DOM_ELEMENTS.spinStrengthNumber.value = String(editingWheel.spinStrength);
-
-            if (DOM_ELEMENTS.spinDurationSlider != null && DOM_ELEMENTS.spinDurationSlider instanceof HTMLInputElement)
-                DOM_ELEMENTS.spinDurationSlider.value = String(editingWheel.spinDuration);
-            if (DOM_ELEMENTS.spinDurationNumber != null && DOM_ELEMENTS.spinDurationNumber instanceof HTMLInputElement)
-                DOM_ELEMENTS.spinDurationNumber.value = String(editingWheel.spinDuration);
-
-            if (DOM_ELEMENTS.colorSchemeSelect != null && DOM_ELEMENTS.colorSchemeSelect instanceof HTMLInputElement)
-                DOM_ELEMENTS.colorSchemeSelect.value = Wheel.getColorSchemeFromFunction(editingWheel.colorScheme) || "";
-            if (DOM_ELEMENTS.spinSoundSelect != null && DOM_ELEMENTS.spinSoundSelect instanceof HTMLInputElement)
-                DOM_ELEMENTS.spinSoundSelect.value = Wheel.getSpinSoundFromAudio(editingWheel.spinSound) || "";
-            if (DOM_ELEMENTS.victorySoundSelect != null && DOM_ELEMENTS.victorySoundSelect instanceof HTMLInputElement)
-                DOM_ELEMENTS.victorySoundSelect.value = Wheel.getWinSoundFromAudio(editingWheel.winSound) || "";
+    // Help
+    if (DOM_ELEMENTS.openHelpButton != null) {
+        DOM_ELEMENTS.openHelpButton.onclick = () => {
+            openHelpModal();
         };
     }
 
-    if (DOM_ELEMENTS.closeSettingsBtn != null) {
-        DOM_ELEMENTS.closeSettingsBtn.onclick = () => {
+    if (DOM_ELEMENTS.closeHelpButton != null) {
+        DOM_ELEMENTS.closeHelpButton.onclick = () => {
+            if (DOM_ELEMENTS.helpModal == null) { return null; }
+            DOM_ELEMENTS.helpModal.classList.add("hidden");
+        };
+    }
+
+    // Settings
+    if (DOM_ELEMENTS.settingsButton != null) {
+        DOM_ELEMENTS.settingsButton.onclick = () => {
+            openWheelSettings();
+        };
+    }
+
+    if (DOM_ELEMENTS.closeSettingsButton != null) {
+        DOM_ELEMENTS.closeSettingsButton.onclick = () => {
             if (DOM_ELEMENTS.settingsModal == null) { return null; }
             DOM_ELEMENTS.settingsModal.classList.add("hidden");
         };
     }
 
     // Spin the wheel
-    if (DOM_ELEMENTS.wheelWrapper != null && DOM_ELEMENTS.wheelWrapper instanceof HTMLInputElement) {
+    if (DOM_ELEMENTS.wheelWrapper != null) {
         DOM_ELEMENTS.wheelWrapper.onclick = () => { spin(); };
     }
-    if (DOM_ELEMENTS.spinBtn != null) {
-        DOM_ELEMENTS.spinBtn.onclick = () => { spin(); };
+    if (DOM_ELEMENTS.spinButton != null) {
+        DOM_ELEMENTS.spinButton.onclick = () => { spin(); };
     }
 
     // Import / Export
-    if (DOM_ELEMENTS.exportBtn != null) {
-        DOM_ELEMENTS.exportBtn.onclick = () => {
-            if (editingWheel == null) { return; }
-            const blob = new Blob(
-                [JSON.stringify(editingWheel.toJSON(), null, 2)],
-                { type: "application/json" }
-            );
-
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(blob);
-            a.download = "wheel.json";
-            a.click();
-
-            URL.revokeObjectURL(a.href);
-
-            showCard("Exported!", 3);
+    if (DOM_ELEMENTS.exportButton != null) {
+        DOM_ELEMENTS.exportButton.onclick = () => {
+            exportWheel();
         };
     }
     
-    if (DOM_ELEMENTS.importBtn != null) {
-        DOM_ELEMENTS.importBtn.onclick = () => { if (DOM_ELEMENTS.importFile != null) DOM_ELEMENTS.importFile.click() };
+    if (DOM_ELEMENTS.importButton != null) {
+        DOM_ELEMENTS.importButton.onclick = () => { if (DOM_ELEMENTS.importFile != null) DOM_ELEMENTS.importFile.click() };
     }
     
     if (DOM_ELEMENTS.importFile != null) {
         DOM_ELEMENTS.importFile.onchange = e => {
-            if (e == null || e.target == null) { return; }
-            // @ts-ignore
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-
-            reader.onload = () => {
-                try {
-                    const data = JSON.parse(reader.result ? String(reader.result) : "");
-                    loadWheelData(data); // use the proper loader
-                    showCard(`Imported ${file.name}`, 3);
-                } catch(err) {
-                    console.error(err);
-                    showCard("Failed to import file", 3);
-                }
-            };
-
-            reader.readAsText(file);
-            saveState();
+            importWheel(e);
         };
     }
 
     // Copy
-    if (DOM_ELEMENTS.copyBtn != null) {
-        DOM_ELEMENTS.copyBtn.onclick = () => {
-            if (editingWheel == null) { return; }
-            navigator.clipboard.writeText(JSON.stringify(editingWheel.toJSON()));
-            showCard("Copied JSON", 2);
+    if (DOM_ELEMENTS.copyButton != null) {
+        DOM_ELEMENTS.copyButton.onclick = () => {
+            copyWheelJSON();
         };
     }
     
     // Saving / Loading
-    function saveAs() {
-        if (DOM_ELEMENTS.saveNameInput == null ||
-            DOM_ELEMENTS.saveModal == null ||
-            DOM_ELEMENTS.saveNameInput == null ||
-            !(DOM_ELEMENTS.saveNameInput instanceof HTMLInputElement)
-        ) { return; }
-        DOM_ELEMENTS.saveNameInput.value = editingWheel.getName();
-        DOM_ELEMENTS.saveModal.classList.remove("hidden");
-        DOM_ELEMENTS.saveNameInput.focus();
-
-        saveState();
-        cacheSavedWheels();
-    }
-
-    if (DOM_ELEMENTS.confirmSaveAsBtn != null) {
-        DOM_ELEMENTS.confirmSaveAsBtn.onclick = () => {
-            if (DOM_ELEMENTS.saveNameInput == null || 
-                !(DOM_ELEMENTS.saveNameInput instanceof HTMLInputElement) ||
-                editingWheel == null ||
-                DOM_ELEMENTS.saveModal == null
-            ) { return; }
-            const name = DOM_ELEMENTS.saveNameInput.value.trim();
-            if (!name) return;
-
-            const wheels = getSavedWheels();
-
-            // @ts-ignore
-            const wheelJSON = editingWheel.toJSON();
-            wheelJSON['name'] = name;
-            wheels[name] = wheelJSON;
-
-            editingWheel.setName(name);
-            // @ts-ignore
-            setSavedWheels(wheels);
-
-            DOM_ELEMENTS.saveModal.classList.add("hidden");
-            showCard("Saved Successfully!", 4);
-        };
-    }
-
-    if (DOM_ELEMENTS.cancelSaveAsBtn != null) {
-        DOM_ELEMENTS.cancelSaveAsBtn.onclick = () => {
-            if (DOM_ELEMENTS.saveModal != null) { DOM_ELEMENTS.saveModal.classList.add("hidden"); }
+    if (DOM_ELEMENTS.cancelSaveAsButton != null) {
+        DOM_ELEMENTS.cancelSaveAsButton.onclick = () => {
+            if (DOM_ELEMENTS.saveModal != null) { 
+                DOM_ELEMENTS.saveModal.classList.add("hidden");
+            }
         }
     }
 
-    if (DOM_ELEMENTS.saveWheelBtn != null) {
-        DOM_ELEMENTS.saveWheelBtn.onclick = () => {
-            if (editingWheel == null) { return null; }
-            if (editingWheel.getName() == null || editingWheel.getName() == "") {
-                saveAs();
-                return;
-            }
-
-            const wheels = getSavedWheels();
-            wheels[editingWheel.getName()] = editingWheel.toJSON();
-
-            showCard(`Saved '${editingWheel.getName()}'`, 2)
-
-            setSavedWheels(wheels);
-            cacheSavedWheels();
+    if (DOM_ELEMENTS.saveAsWheelButton != null) {
+        DOM_ELEMENTS.saveAsWheelButton.onclick = () => {
+            openSaveAsModal();
         };
     }
 
-    if (DOM_ELEMENTS.saveAsWheelBtn != null) {
-        DOM_ELEMENTS.saveAsWheelBtn.onclick = () => {
+    if (DOM_ELEMENTS.confirmSaveAsButton != null) {
+        DOM_ELEMENTS.confirmSaveAsButton.onclick = () => {
             saveAs();
         };
     }
 
-    if (DOM_ELEMENTS.loadWheelBtn != null) {
-        DOM_ELEMENTS.loadWheelBtn.onclick = () => {
-            if (DOM_ELEMENTS.loadModal == null) { return; }
-            DOM_ELEMENTS.loadModal.classList.remove("hidden");
-            rebuildLoadMenu();
+    if (DOM_ELEMENTS.newWheelButton != null) {
+        DOM_ELEMENTS.newWheelButton.onclick = () => {
+            loadWheelData(Wheel.baseWheel().toJSON()); 
+            showCard("Made New Wheel!", 2);
+            saveState();
+        }
+    }
+
+    if (DOM_ELEMENTS.saveWheelButton != null) {
+        DOM_ELEMENTS.saveWheelButton.onclick = () => {
+            save();
         };
     }
 
-    function rebuildLoadMenu() {
-        if (DOM_ELEMENTS.loadList == null) { return; }
-        DOM_ELEMENTS.loadList.innerHTML = "";
-
-        const wheels = getSavedWheels();
-
-        Object.keys(wheels).forEach(name => {
-
-            const row = document.createElement("div");
-            row.className = "wheelRow";
-
-            const title = document.createElement("div");
-            title.className = "wheelName";
-            title.textContent = name;
-
-            const btns = document.createElement("div");
-            btns.className = "wheelBtns";
-
-            const loadBtn = document.createElement("button");
-            loadBtn.className = "primaryBtn";
-            loadBtn.textContent = "Load";
-            loadBtn.onclick = () => {
-                if (DOM_ELEMENTS.loadModal == null) { return; }
-                loadWheel(name);
-                DOM_ELEMENTS.loadModal.classList.add("hidden");
-                showCard("Wheel Loaded", 3);
-            };
-
-            const delBtn = document.createElement("button");
-            delBtn.className = "deleteBtn";
-            delBtn.textContent = "Delete";
-            delBtn.onclick = () => {
-                if (!confirm(`Delete "${name}"?`)) return;
-
-                const wheels = getSavedWheels();
-                delete wheels[name];
-                setSavedWheels(wheels);
-
-                rebuildLoadMenu();
-                showCard("Deleted", 3);
-            };
-
-            btns.append(loadBtn, delBtn);
-            row.append(title, btns);
-            if (DOM_ELEMENTS.loadList == null) { return; }
-            DOM_ELEMENTS.loadList.append(row);
-        });
+    if (DOM_ELEMENTS.driveSaveButton != null) {
+        DOM_ELEMENTS.driveSaveButton.onclick = () => {
+            saveWheelsToDrive();
+        }
     }
 
-    /** @param {string} name The name of the wheel */
-    function loadWheel(name) {
-        if (editingWheel == null) { return; }
-        const wheels = getSavedWheels();
-        if (!wheels[name]) {
-            showCard(`Wheel "${name}" not found!`, 3);
-            return;
+    if (DOM_ELEMENTS.driveLoadButton != null) {
+        DOM_ELEMENTS.driveLoadButton.onclick = () => {
+            loadWheelsFromDrive();
         }
-
-        loadWheelData(wheels[name])
-        showCard(`Wheel "${name}" loaded!`, 3);
-    }
-
-    if (DOM_ELEMENTS.newWheelBtn != null) {
-        DOM_ELEMENTS.newWheelBtn.onclick = () => {
-            loadWheelData(Wheel.baseWheel().toJSON()); 
-            showCard("Made New Wheel!", 2);
-        }
-
-        saveState();
     }
 
     /* ------------ WHEEL SETTINGS ------------ */
-    
-    /** @param {number} value */
-    function syncSpinStrength(value) {
-        if (editingWheel == null) { return; }
-        editingWheel.spinStrength = value;
-        if (DOM_ELEMENTS.spinStrengthSlider != null && DOM_ELEMENTS.spinStrengthSlider instanceof HTMLInputElement)
-            DOM_ELEMENTS.spinStrengthSlider.value = String(value);
-        if (DOM_ELEMENTS.spinStrengthNumber != null && DOM_ELEMENTS.spinStrengthNumber instanceof HTMLInputElement)
-            DOM_ELEMENTS.spinStrengthNumber.value = String(value);
-        saveState();
-    }
-    
     if (DOM_ELEMENTS.spinStrengthSlider != null) {
         DOM_ELEMENTS.spinStrengthSlider.oninput = e => {
             if (e.target != null) {
@@ -360,21 +586,9 @@ function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
         };
     }
     
-    /** @param {number} value */
-    function syncSpinDuration(value) {
-        if (editingWheel == null) { return; }
-        editingWheel.spinDuration = value;
-        if (DOM_ELEMENTS.spinDurationSlider != null && DOM_ELEMENTS.spinDurationSlider instanceof HTMLInputElement)
-            DOM_ELEMENTS.spinDurationSlider.value = String(value);
-        if (DOM_ELEMENTS.spinDurationNumber != null && DOM_ELEMENTS.spinDurationNumber instanceof HTMLInputElement)
-            DOM_ELEMENTS.spinDurationNumber.value = String(value);
-        saveState();
-    }
-    
     if (DOM_ELEMENTS.spinDurationSlider != null) {
         DOM_ELEMENTS.spinDurationSlider.oninput = e => {
-            if (e.target != null) {
-                // @ts-ignore
+            if (e.target != null && e.target instanceof HTMLInputElement) {
                 syncSpinDuration(Number(e.target.value));
             }
         };
@@ -382,8 +596,7 @@ function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
 
     if (DOM_ELEMENTS.spinDurationNumber != null) {
         DOM_ELEMENTS.spinDurationNumber.oninput = e => {
-            if (e.target != null) {
-                // @ts-ignore
+            if (e.target != null && e.target instanceof HTMLInputElement) {
                 syncSpinDuration(Number(e.target.value));
             }
         };
@@ -391,36 +604,96 @@ function initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels) {
 
     if (DOM_ELEMENTS.colorSchemeSelect != null) {
         DOM_ELEMENTS.colorSchemeSelect.oninput = e => {
-            if (e.target != null) {
-                // @ts-ignore
-                editingWheel.colorScheme = Wheel.COLOR_SCHEMES[e.target.value]
-            }
-            saveState();
+            // @ts-ignore
+            setColorScheme(e.target.value);
         };
     }
 
     if (DOM_ELEMENTS.spinSoundSelect != null) {
         DOM_ELEMENTS.spinSoundSelect.oninput = e => {
-            if (e.target != null) {
-                // @ts-ignore
-                editingWheel.spinSound = Wheel.SPIN_SOUNDS[e.target.value]
-            }
-            saveState();
+            // @ts-ignore
+            setSpinSound(e.target.value);
         };
     }
 
-    if (DOM_ELEMENTS.victorySoundSelect != null) {
-        DOM_ELEMENTS.victorySoundSelect.oninput = e => {
-            if (e.target != null) {
-                // @ts-ignore
-                editingWheel.winSound = Wheel.WIN_SOUNDS[e.target.value]
-            }
-            saveState();
+    if (DOM_ELEMENTS.winSoundSelect != null) {
+        DOM_ELEMENTS.winSoundSelect.oninput = e => {
+            // @ts-ignore
+            setWinSound(e.target.value);
         };
     }
 
+    // Temporary canvas (will be deleted by restructureWheels())
     if (editingWheel != null && DOM_ELEMENTS.canvas != null && DOM_ELEMENTS.canvas instanceof HTMLCanvasElement) {
         editingWheel.setCanvas(DOM_ELEMENTS.canvas);
+    }
+
+    // Wheel Select Stuff
+    // if (DOM_ELEMENTS.wheelSelectBrowser != null && DOM_ELEMENTS.wheelSelectBrowser instanceof HTMLElement) {
+    //     DOM_ELEMENTS.wheelSelectBrowser.addEventListener('contextmenu', openWheelSelectMenu);
+    // }
+
+    if (DOM_ELEMENTS.wheelSelectBrowser != null && DOM_ELEMENTS.wheelSelectBrowser instanceof HTMLElement) {
+        DOM_ELEMENTS.wheelSelectBrowser.addEventListener("click", (e) => {
+            if (!(e instanceof MouseEvent) || e.target == null || !(e.target instanceof HTMLElement)) { return; }
+            if (e.target == DOM_ELEMENTS.wheelSelectBrowser) {
+                clearSelection();
+                return;
+            }
+            const item = e.target.closest(".wheel-select-wheel");
+            if (item == null || !(item instanceof HTMLElement)) return;
+
+            const selectableWheels = getAllSelectableWheels();
+            const index = selectableWheels.indexOf(item);
+
+            if (e.shiftKey) {
+                e.preventDefault();
+                if (lastSelectedIndex == null) {
+                    handleSingleSelect(item);
+                    lastSelectedIndex = index;
+                }
+                else {
+                    handleShiftSelect(selectableWheels, index);
+                }
+            } else if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                handleCtrlSelect(item);
+                lastSelectedIndex = index;
+            } else {
+                handleSingleSelect(item);
+                lastSelectedIndex = index;
+            }
+
+            updateSelectedWheels();
+        });
+    }
+
+    document.addEventListener('click', () => {
+        if (DOM_ELEMENTS.wheelSelectWheelMenu != null && DOM_ELEMENTS.wheelSelectWheelMenu instanceof HTMLElement) {
+            DOM_ELEMENTS.wheelSelectWheelMenu.classList.add('hidden');
+        }
+    });
+
+    if (DOM_ELEMENTS.wheelSelectWheelMenuDelete != null && DOM_ELEMENTS.wheelSelectWheelMenuDelete instanceof HTMLElement) {
+        DOM_ELEMENTS.wheelSelectWheelMenuDelete.addEventListener('click', deleteSelectedWheels);
+    }
+
+
+    // Text Area Coloring
+    if (DOM_ELEMENTS.textModeInput != null && DOM_ELEMENTS.textModeVisible != null && DOM_ELEMENTS.textModeArea != null &&
+        DOM_ELEMENTS.textModeInput instanceof HTMLTextAreaElement
+    ) {
+        DOM_ELEMENTS.textModeInput.addEventListener('input', updateTextArea);
+
+        // Optional: sync scroll
+        DOM_ELEMENTS.textModeInput.addEventListener('scroll', () => {
+            if (DOM_ELEMENTS.textModeVisible == null || DOM_ELEMENTS.textModeInput == null) { return; }
+            DOM_ELEMENTS.textModeVisible.scrollTop = DOM_ELEMENTS.textModeInput.scrollTop;
+            DOM_ELEMENTS.textModeVisible.scrollLeft = DOM_ELEMENTS.textModeInput.scrollTop;
+        });
+
+        // Focus div when user clicks
+        DOM_ELEMENTS.textModeVisible.addEventListener('click', () => { if (DOM_ELEMENTS.textModeArea != null) DOM_ELEMENTS.textModeArea.focus() });
     }
 }
 
@@ -450,8 +723,8 @@ class Wheel {
         spinStrength: 12,
         spinDuration: 2000,
         colorScheme: "classic",
-        spinSound: "metalpipe",
-        winSound: "yippee"
+        spinSound: "classic",
+        winSound: "jonnahwhimsy"
     };
 
     /** @type {Record<string, (i:number, l:number)=>string>} All the schemes this wheel can take*/
@@ -464,14 +737,17 @@ class Wheel {
 
     /** @type {Record<string, HTMLAudioElement>} All the sounds that can be used while spinning */
     static SPIN_SOUNDS = {
-        "metalpipe": new Audio("asset/sound/metal_pipe.mp3"),
-        "silence": new Audio("asset/sound/silence.mp3")
+        classic: new Audio("asset/sound/spin/classic.mp3"),
+        metalpipe: new Audio("asset/sound/spin/metal_pipe.mp3"),
+        silence: new Audio("asset/sound/silence.mp3")
     };
 
     /** @type {Record<string, HTMLAudioElement>} All the sounds that can be used after winning */
     static WIN_SOUNDS = {
-        "yippee": new Audio("asset/sound/yippee.mp3"),
-        "silence": new Audio("asset/sound/silence.mp3")
+        jonnahwhimsy: new Audio("asset/sound/win/jonnah_whimsy.mp3"),
+        wow: new Audio("asset/sound/win/wow.mp3"),
+        yippee: new Audio("asset/sound/win/yippee.mp3"),
+        silence: new Audio("asset/sound/silence.mp3")
     };
 
     /** @type {Record<string, Wheel>} A pointer to a collection of cached wheels (for speed ups) */
@@ -497,8 +773,9 @@ class Wheel {
      * @param {string|null} name
      * @param {Array<WheelEntry>} wheelEntries 
      * @param {HTMLCanvasElement|null} canvas 
+     * @param {boolean} makeBuffer True if a buffer should be made. False otherwise.
      */
-    constructor(name, wheelEntries, canvas) {
+    constructor(name, wheelEntries, canvas, makeBuffer=false) {
         if (!Wheel.INITIALIZED) {
             Wheel.initialize_statics();
         }
@@ -576,9 +853,14 @@ class Wheel {
         this.subLevel = 0;
         /** @type {Wheel|null} The parent of this wheel */
         this.parentWheel = null;
+        /** @type {boolean} True if this entries on this wheel are exclusive (as in they can't be reobtained by other exclusives) */
+        this.isExclusive = false;
+
+        /** @type {boolean} True if this wheel is from the cache. False otherwise. */
+        this.isCached = false;
 
         // Initially created with EVERY TAG enabled
-        this.updateEntries(this.getAssociatedTags());
+        this.updateEntries(this.getAssociatedTags(), makeBuffer);
     }
 
 
@@ -597,26 +879,61 @@ class Wheel {
     /**
      * Creates a new wheel exclusively from JSON
      * @param {SavedWheel} json The JSON obtained from wheel.toJSON()
-     * @param {boolean} useCache True if the program should first check the cache for wheels matching this name.
+     * @param {boolean} useCache True if the program should first check the cache for wheels matching this name. (default=false)
+     * @param {boolean} makeBuffer True if the new wheel should automatically make a cache. (default=true)
      * @return {Wheel} The wheel that contains that json data
      */
-    static fromJSON(json, useCache=false) {
+    static fromJSON(json, useCache=false, makeBuffer=true) {
         // Check cache first
         if (useCache && Wheel.CACHED_WHEELS.hasOwnProperty(json.name)) {
-            
+            const newWheel = Wheel.baseWheel();
+            newWheel.fromCache(Wheel.CACHED_WHEELS[json.name]);
+            return newWheel;
         }
         // Ignore cache and make new wheel
         const newWheel = Wheel.baseWheel();
-        newWheel.fromJSON(json);
+        newWheel.fromJSON(json, makeBuffer);
         return newWheel;
+    }
+
+
+    /**
+     * Overwrites all the data of this current wheel
+     * This copies pretty much everything except the literal canvas
+     * @param {Wheel} cachedWheel The cached wheel to overwrite with
+     */
+    fromCache(cachedWheel) {
+        // console.log("Loaded wheel from cache!");
+
+        this.setName(cachedWheel.name);
+        this.setEntries(cachedWheel.wheelEntries);
+        this.enabledTags = cachedWheel.enabledTags;
+        this.isCached = true;
+        this.riggedWheelEntry = cachedWheel.riggedWheelEntry;
+        this.riggedAmount = cachedWheel.riggedAmount;
+
+        this.updateTags();
+        this.updateEntries(this.enabledTags, false);
+
+        this.buffered = true;
+
+        this.spinStrength = cachedWheel.spinStrength;
+        this.spinDuration = cachedWheel.spinDuration;
+        this.colorScheme = cachedWheel.colorScheme;
+        this.spinSound = cachedWheel.spinSound;
+        this.winSound = cachedWheel.winSound;
+
+        this.canvasBuffer = cachedWheel.canvasBuffer;
+        this.contextBuffer = cachedWheel.contextBuffer;
     }
 
 
     /**
      * Overwrites all the data of this current wheel.
      * @param {SavedWheel} json The json to overwrite the wheel with.
+     * @param {boolean} makeBuffer True if the program should automatically make a buffer. (default=true)
      */
-    fromJSON(json) {
+    fromJSON(json, makeBuffer=true) {
         this.setName(json.name);
         this.setEntries(json.wheelEntries.map(savedEntry => WheelEntry.fromJSON(savedEntry)).filter(e => e !== null));
         if (json.enabledTags instanceof Array) { this.enabledTags = new Set(json.enabledTags); }
@@ -624,7 +941,7 @@ class Wheel {
         this.riggedAmount = json.riggedAmount;
 
         this.updateTags();
-        this.updateEntries(this.enabledTags);
+        this.updateEntries(this.enabledTags, makeBuffer);
 
         this.spinStrength = json.settings.spinStrength;
         this.spinDuration = json.settings.spinDuration;
@@ -636,25 +953,42 @@ class Wheel {
 
     /**
      * This should only be called when the wheel needs to first be drawn.
+     * @param {boolean} force Forces the wheel to be redrawn anyway
      */
-    makeBuffer() {
+    makeBuffer(force=false) {
+        // Cached wheels cannot be rebuffered
+        if (this.isCached) {
+            return;
+        }
+        // console.log(`Buffered wheel named ${this.name} with ${this.wheelEntries.length} entries. :p`);
+
         this.buffered = true;
-        if (this.canvas == null || this.contextBuffer == null) return;
-        this.canvasBuffer.width = this.canvas.width;
-        this.canvasBuffer.height = this.canvas.height;
+        let canvasToUse = null;
+        if (this.canvas != null) {
+            canvasToUse = this.canvas;
+        }
+        else if (this.canvasBuffer != null) {
+            canvasToUse = this.canvasBuffer;
+        }
+        else {
+            return;
+        }
+        if (this.contextBuffer == null) return;
+        this.canvasBuffer.width = canvasToUse.width;
+        this.canvasBuffer.height = canvasToUse.height;
         // Do not render if there are no wheel entries
         if (this.enabledWheelEntries.length == 0) return;
         // Clear the canvas
-        this.contextBuffer.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.contextBuffer.clearRect(0, 0, canvasToUse.width, canvasToUse.height);
         // Choose the correct color scheme
         const colorSchemeFunction = this.colorScheme || Wheel.COLOR_SCHEMES.classic;
 
         // Buffer, center, and rotate the wheel
-        const horOffset = this.canvas.width * 0.025;    // 2.5% padding
-        const verOffset = this.canvas.height* 0.025;    // 2.5% padding
-        const radius = this.canvas.height * 0.475;      // 95% of space is wheel
+        // const horOffset = this.canvas.width * 0.025;    // 2.5% padding
+        // const verOffset = this.canvas.height* 0.025;    // 2.5% padding
+        const radius = canvasToUse.height * 0.475;      // 95% of space is wheel
         this.contextBuffer.save();
-        this.contextBuffer.translate(this.canvas.width*0.5, this.canvas.height*0.5);   // Center
+        this.contextBuffer.translate(canvasToUse.width*0.5, canvasToUse.height*0.5);   // Center
         // No rotation (0 degrees)
 
         // Start drawing slices
@@ -675,23 +1009,31 @@ class Wheel {
             this.contextBuffer.save();
             this.contextBuffer.rotate(startAngle - (this.sliceAngles[i])*0.5);
 
-            // TODO: Mathematically determine font
-            this.contextBuffer.font = "100px system-ui";
-            const widthScale = this.contextBuffer.measureText(text).width / 100;
-            const arcLength = radius * this.sliceAngles[i];
+            // Only use lines if the slices will be too small
+            if (this.sliceAngles[i] < 0.05) {
+                this.contextBuffer.fillStyle = "#111";
+                const offset = Math.max(1-text.length*0.025, 0.3) * radius;
+                this.contextBuffer.fillRect(offset, 0, radius*0.96-offset, this.sliceAngles[i]*40);
+            }
+            else {
+                // TODO: Mathematically determine font
+                this.contextBuffer.font = "100px system-ui";
+                const widthScale = this.contextBuffer.measureText(text).width / 100;
+                const arcLength = radius * this.sliceAngles[i];
 
-            const sizeFromWidth = maxWidth / widthScale;
-            const sizeFromArc = arcLength; // height ≈ fontSize
+                const sizeFromWidth = maxWidth / widthScale;
+                const sizeFromArc = arcLength; // height ≈ fontSize
 
-            this.contextBuffer.font = `${Math.max(6, Math.min(sizeFromWidth, sizeFromArc, 22))}px system-ui`;
+                this.contextBuffer.font = `${Math.max(6, Math.min(sizeFromWidth, sizeFromArc, 22))}px system-ui`;
 
-            this.contextBuffer.fillStyle = "#111";
-            this.contextBuffer.textAlign = "right";
-            this.contextBuffer.textBaseline = "middle";
-            this.contextBuffer.translate(radius*0.99,0);
-            this.contextBuffer.fillText(text,0,0);
-
+                this.contextBuffer.fillStyle = "#111";
+                this.contextBuffer.textAlign = "right";
+                this.contextBuffer.textBaseline = "middle";
+                this.contextBuffer.translate(radius*0.99,0);
+                this.contextBuffer.fillText(text,0,0);
+            }
             this.contextBuffer.restore();
+            
 
             startAngle -= this.sliceAngles[i];
         }
@@ -713,7 +1055,7 @@ class Wheel {
         this.context.save();
         this.context.translate(radius, radius);
         this.context.rotate(this.rotation);
-        this.context.drawImage(this.canvasBuffer, -radius, -radius);
+        this.context.drawImage(this.canvasBuffer, -radius, -radius, this.canvas.width, this.canvas.height);
         this.context.restore();
 
         // Draw pointer
@@ -736,8 +1078,9 @@ class Wheel {
      * Spins the wheel at the given strength and duration
      * @param {number} time The time the wheel is spun in milliseconds
      * @param {string|null} riggedValue The rigged value of the wheel to land on.
+     * @param {Record<string, Set<string>>} excludedEntries A record of all entries that are impossible to obtain {WHEEL_NAME: [ENTRY_1, ENTRY_2, ...]}
      */
-    spin(time, riggedValue=null) {
+    spin(time, riggedValue=null, excludedEntries={}) {
         console.log("SPIN... THAT... WHEELLLLL!");
         if (this.isSpinning) { return; }
         this.isSpinning = true;
@@ -746,7 +1089,7 @@ class Wheel {
         this.spinEndTime = this.spinStartTime + this.spinDuration;
 
         // Pull wheel entry and set rotation accordingly
-        const pulled = this.pullWeightedWheelEntry();
+        const pulled = this.pullWeightedWheelEntry(excludedEntries);
         this.winningWheelEntry = pulled["wheelEntry"];
         // Failed to pull
         if (this.winningWheelEntry == null) {
@@ -756,7 +1099,7 @@ class Wheel {
         }
         // Add all necessary subwheels
         this.subWheels = {};
-        this.addSubWheels(Array.from(this.winningWheelEntry.getValue().matchAll(/(?<=\{).+?(?=\})/g)).map(e => e[0]));
+        this.addSubWheels(Wheel.findSubWheels(this.winningWheelEntry.value));
         if (Object.keys(this.subWheels).length != 0) { this.needsSubSpin = true; }
         // Setup rotation shenanigans
         this.rotation = this.rotation % (2 * Math.PI);
@@ -767,7 +1110,64 @@ class Wheel {
 
         this.spinSound.play();
         this.initialRotation = this.rotation;
+        if (this.isExclusive) { addExcludedEntry(this.getName(), this.winningWheelEntry.value); }
     }
+    
+
+    /**
+     * Forces the wheel to stop spinning.
+     * Does not return any results.
+     */
+    stopSpinning() {
+        this.isSpinning = false;
+        this.hasResult = false;
+        this.spinSound.pause();
+        this.winSound.pause();
+    }
+
+
+    /**
+     * Finds all subwheels from the given text
+     * @param {string} text The text from the entry to scrape the subwheels of
+     * @return {Array<string>} An array of all the subwheels without the curly braces
+     */
+    static findSubWheels(text) {
+        let subWheels = new Array();
+        let i = 0;
+        let inSubWheel = false;
+        let currentSubWheel = "";
+        let c;
+        while (i < text.length) {
+            c = text.charAt(i);
+            if (inSubWheel) {
+                if (c == '\\') {
+                    // just skip to the next place
+                    i++;
+                    currentSubWheel += text.charAt(i);
+                }
+                else if (c == '}') {
+                    inSubWheel = false;
+                    subWheels.push(currentSubWheel);
+                    currentSubWheel = "";
+                }
+                else {
+                    currentSubWheel += c;
+                }
+            }
+            // Delimiter
+            if (c == '\\') {
+                // just skip to the next place
+                i++;
+            }
+            else if (c == '{') {
+                inSubWheel = true;
+            }
+            i++;
+        }
+        
+        return subWheels;
+    }
+
 
     static BAGEL = 0;
 
@@ -779,17 +1179,25 @@ class Wheel {
         // Only add subwheels if they exist
         const savedWheels = getSavedWheels();
         const names = Object.keys(savedWheels);
+        let isExclusive = false;
 
-        for (const subName of wheelNames) {
+        for (let subName of wheelNames) {
+            isExclusive = false;
+            // Handle exclusives
+            if (subName.length > 0 && subName.charAt(0) == "!") {
+                isExclusive = true;
+                subName = subName.substring(1, subName.length);
+            }
             // Skip if the wheel doesn't exist
             if (!names.includes(subName)) {
                 console.log(`Wheel {${subName}} doesn't exist.`)
                 continue;
             }
-            const subWheel = Wheel.fromJSON(savedWheels[subName]);
+            const subWheel = Wheel.fromJSON(savedWheels[subName], true);
             subWheel.isSub = true;
             subWheel.subLevel = this.subLevel + 1;
             subWheel.parentWheel = this;
+            subWheel.isExclusive = isExclusive;
             this.subWheels[String(Wheel.BAGEL)] = subWheel;
             Wheel.BAGEL++;
         }
@@ -825,9 +1233,10 @@ class Wheel {
 
     /**
      * Pulls a wheel entry using the weight system.
+     * @param {Record<string, Set<string>>} excludedEntries A record of all entries that are impossible to obtain {WHEEL_NAME: [ENTRY_1, ENTRY_2, ...]}
      * @return @typedef {Object} @property {number} weight @property {WheelEntry|null} wheelEntry The wheel entry that got pulled and the winning weight
      */
-    pullWeightedWheelEntry() {
+    pullWeightedWheelEntry(excludedEntries) {
         // Account for rigging
         if (this.riggedAmount > 0 && this.riggedWheelEntry && this.enabledWheelEntries.map(wheelEntry => wheelEntry.getValue()).includes(this.riggedWheelEntry.getValue())) {
             this.riggedAmount--;
@@ -843,7 +1252,37 @@ class Wheel {
             return {"weight": weight, "wheelEntry": this.riggedWheelEntry};
         }
 
-        // Not rigged (or failed to rig)
+        // Not rigged (or failed to rig), but exclusive
+        if (this.isExclusive && excludedEntries.hasOwnProperty(this.getName())) {
+            // Filter out all excluded wheel entries
+            const filteredWheelEntries = this.wheelEntries.map((wheelEntry) => {
+                if (excludedEntries[this.getName()].has(wheelEntry.getValue())) {
+                    return;
+                }
+                else {
+                    return wheelEntry;
+                }
+            });
+            // If there are no entries left, return nothing
+            if (filteredWheelEntries.length == 0) { return {"weight": 0, "wheelEntry": new WheelEntry("", 0, new Array())}; }
+           
+            const tempTotalWeight = filteredWheelEntries.reduce((acc, wheelEntry) => {
+                if (!wheelEntry) { return acc; }
+                return acc + wheelEntry.getWeight();
+            }, 0);
+            const winningWeight = tempTotalWeight * Math.random();
+            let tempWeight = winningWeight;
+
+            for (const wheelEntry of filteredWheelEntries) {
+                if (!wheelEntry) { continue; }
+                tempWeight -= wheelEntry.getWeight();
+                if (tempWeight <= 0) {
+                    return {"weight": winningWeight, "wheelEntry": wheelEntry};
+                }
+            }
+        }
+
+        // Not rigged or exclusive
         const winningWeight = this.totalWeight * Math.random();
         let tempWeight = winningWeight;
 
@@ -925,8 +1364,9 @@ class Wheel {
     /**
      * Enables and disables wheel entries based on enabled tags
      * @param {Set<string>} enabledTags A list of all enabled tags.
+     * @param {boolean} refreshBuffer True if the buffer should be redrawn. (default=true)
      */
-    updateEntries(enabledTags) {
+    updateEntries(enabledTags, refreshBuffer=true) {
         // Fix enabled wheel entries (based on tags)
         this.enabledWheelEntries = new Array();
         for (const wheelEntry of this.wheelEntries) {
@@ -954,7 +1394,9 @@ class Wheel {
         }
         this.tags.delete("");
 
-        this.makeBuffer();
+        if (refreshBuffer) {
+            this.makeBuffer();
+        }   
     }
 
 
@@ -1292,6 +1734,17 @@ class Wheel {
         this.context = canvas ? canvas.getContext("2d") : null;
         this.wheelWidth = this.canvas ? this.canvas.width-20 : 600;
         this.wheelHeight = this.canvas ? this.canvas.height-20 : 600;
+    }
+
+
+    /**
+     * Sets the buffer canvas of this wheel.
+     * Typically used for cached wheels.
+     * @param {HTMLCanvasElement} canvasBuffer 
+     */
+    setCanvasBuffer(canvasBuffer) {
+        this.canvasBuffer = canvasBuffer;
+        this.contextBuffer = this.canvasBuffer.getContext("2d");
     }
 
 
@@ -1687,6 +2140,210 @@ function convertV0_to_V1(jsonV0, key) {
 }// @ts-check
 
 
+
+/** @type {string} The name of the file to be stored in the drive */
+const fileName = "wheel-of-doom-data.json";
+
+
+/** @type {string} The ID for users to interface with my API, which interfaces with Google. */
+const CLIENT_ID = "35810980246-nusnbvs7f77dfrmfdqogt56eiggeh7eb.apps.googleusercontent.com";
+/** @type {string|null} The access token of the user to be set by authenticate() */
+let accessToken = null;
+
+
+// @ts-ignore I'm not dealing with typescript nonsense
+const tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    // Drive.file means this program can only access files they create
+    scope: "https://www.googleapis.com/auth/drive.file",
+    // @ts-ignore
+    callback: (response) => {
+        accessToken = response.access_token;
+        localStorage.setItem("drive-access-token", accessToken || "");
+    },
+});
+
+authenticate();
+
+
+/**
+ * Attempts to authenticate with the user's Google Drive
+ */
+function authenticate() {
+    const savedToken = localStorage.getItem("drive-access-token");
+    if (savedToken) { accessToken = savedToken; return; }
+    tokenClient.requestAccessToken();
+}
+
+
+/**
+ * Refreshes the access token
+ */
+function refreshToken() {
+    tokenClient.requestAccessToken();
+    showCard("Refreshed authentication. Try again.", 2);
+}
+
+
+/**
+ * Overwrites the given file ID in the Google Drive
+ * @param {Object} fileId The file ID to overwrite
+ * @param {Object} jsonData The JSON data to place in the file
+ * @returns 
+ */
+async function overwriteFile(fileId, jsonData) {
+  const file = new Blob([JSON.stringify(jsonData)], {
+    type: "application/json",
+  });
+
+  const res = await fetch(
+    `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: file,
+    }
+  );
+
+  return res.json();
+}
+
+
+/**
+ * Uploads the given JSON data to the Google Drive
+ * @param {Object|null} fileID The file ID of the already existing file (if it exists)
+ * @param {Object} jsonData The JSON data to upload
+ */
+async function uploadFile(fileID, jsonData) {
+    if (accessToken == null) {
+        console.warn("Failed to upload data to the drive because accessToken is null.");
+        return;
+    }
+    if (fileID) {
+        // @ts-ignore Doesn't know that the id field exists
+        await overwriteFile(fileID.id, jsonData);
+        return;
+    }
+    // Setup the data to upload
+    const metadata = {
+        name: fileName,
+        mimeType: "application/json",
+    };
+    const file = new Blob([JSON.stringify(jsonData)], {
+        type: "application/json",
+    });
+
+    const form = new FormData();
+    form.append(
+        "metadata",
+        new Blob([JSON.stringify(metadata)], { type: "application/json" })
+    );
+    form.append("file", file);
+
+    // Send the data to the google API
+    const res = await fetch(
+        "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+        {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+            body: form,
+        }
+    );
+
+    const data = await res.json();
+    if (data.hasOwnProperty("error")) {
+        refreshToken();
+    }
+    console.log("Saved data:");
+    console.log(data);
+}
+
+
+/**
+ * Finds a file in the drive with the given name
+ * @param {string} name The name of the file to look for
+ * @returns {Promise<Object|null>} The first match (or null if it doesn't exist)
+ */
+async function findFile(name) {
+    const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=name='${name}' and trashed=false`,
+        {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        },
+        }
+    );
+
+    const data = await res.json();
+    if (data.hasOwnProperty("error")) {
+        refreshToken();
+    }
+    return data.files?.[0]; // first match
+}
+
+
+/**
+ * Reads the text in the given file
+ * @param {Object} fileId The file ID (as given by Google Drive through findFile)
+ * @returns {Promise<Object>} The text stored in the file (as a JSON element)
+ */
+async function readFile(fileId) {
+    const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+        {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        },
+        }
+    );
+
+    const text = await res.text(); // since it's JSON
+    return JSON.parse(text);
+}
+
+
+async function _loadWheelsFromDrive() {
+    const file = await findFile(fileName);
+
+    if (!file) {
+        showCard("No saved file found.");
+        return;
+    }
+
+    // @ts-ignore
+    const data = await readFile(file.id);
+    // @ts-ignore
+    setSavedWheels(data["wheels"]);
+}
+
+
+/**
+ * Loads all wheels saved to the Google Drive (if any)
+ */
+function loadWheelsFromDrive() {
+    _loadWheelsFromDrive().then(() => { showCard("Loaded from Drive!", 3); })
+}
+
+
+/**
+ * Saves all the wheels to the Google Drive
+ */
+function saveWheelsToDrive() {
+    authenticate();
+    showCard("Saving to Drive...", 2);
+    findFile(fileName).then(
+        (id) => { uploadFile(id, {wheels: getSavedWheels()}).then(
+            () => { showCard("Saved to Drive!", 3); }
+        )}
+    );
+}// @ts-check
+
+
 /** @typedef {import("./update.js").SavedWheelEntry} SavedWheelEntry */
 /** @typedef {import("./update.js").WheelSettings} WheelSettings */
 /** @typedef {import("./update.js").SavedWheel} SavedWheel */
@@ -1694,10 +2351,10 @@ function convertV0_to_V1(jsonV0, key) {
 
 /** @type {boolean} True if editing entries through text */
 let textModeActive = false;
-/** @type {Record<string, Wheel>} A dictionary of all cached (saved) wheels. Is refreshed upon save. */
-let cachedWheels = {};
 /** @type {Array<Wheel>} All the wheels on screen. The first wheel in the list is the one being edited on the left */
 let wheels = new Array();
+/** @type {Record<string, Set<string>>} A record of all entries that are impossible to obtain from exclusive wheel {WHEEL_NAME: [ENTRY_1, ENTRY_2, ...]} */
+let excludedEntries = {};
 /** @type {Wheel|null} The wheel that is currently being edited. */
 let editingWheel = null;
 
@@ -1710,19 +2367,115 @@ let editingWheel = null;
  * Goes through the saved wheels and caches them all.
  * The expectation is that this is called asyncronously.
  */
-async function cacheSavedWheels() {
-    cachedWheels = {};
+function cacheSavedWheels() {
+    _cacheSavedWheels().then(() => {});
+}
+
+
+/**
+ * Should ONLY be called by cacheSavedWheels()!
+ * Goes through the saved wheels and caches them all.
+ * The expectation is that this is called asyncronously.
+ * @return {Promise<any>} A async promise to run to cache wheels.
+ */
+async function _cacheSavedWheels() {
     const savedJSONs = getSavedWheels();
+    let cachedNumber = 0;
     for (const [wheelName, json] of Object.entries(savedJSONs)) {
-        cachedWheels[wheelName] = Wheel.fromJSON(json, false);
+        const wheel = Wheel.fromJSON(json, false, false);
+        cacheWheel(wheel);
+        cachedNumber++;
     }
-    Wheel.CACHED_WHEELS = cachedWheels;
+
+    console.log(`Cached ${Object.keys(Wheel.CACHED_WHEELS).length} Wheels!`);
+}
+
+
+/**
+ * Caches the given wheel (asyncronously)
+ * @param {Wheel} wheel The wheel to cache
+ */
+function cacheWheel(wheel) {
+    _cacheWheel(wheel);
+}
+
+
+/**
+ * Caches the given wheel asyncronously
+ * @param {Wheel} wheel The wheel to cache;
+ */
+async function _cacheWheel(wheel) {
+    const name = wheel.name || "unknown";
+    const id = `cached-wheel_${name.replaceAll("\"","'")}`;
+    let canvasBuffer = null;
+    // Try to find existing buffer
+    for (const cachedWheel of Object.values(Wheel.CACHED_WHEELS)) {
+        if (cachedWheel.name == name) {
+            canvasBuffer = cachedWheel.canvasBuffer;
+        }
+    }
+    // Make new canvas if it doesn't exit
+    if (canvasBuffer == null || !(canvasBuffer instanceof HTMLElement)) {
+        canvasBuffer = document.createElement('canvas');
+        if (!(canvasBuffer instanceof HTMLCanvasElement)) { return; }
+        canvasBuffer.height = 640;
+        canvasBuffer.width = 640;
+        canvasBuffer.id = id;
+    }
+
+    if (!(canvasBuffer instanceof HTMLCanvasElement)) { return; }
+    wheel.setCanvasBuffer(canvasBuffer);
+    wheel.makeBuffer();
+    
+    Wheel.CACHED_WHEELS[name] = wheel;
+}
+
+
+/**
+ * Reloads the wheel list (the wheel select)
+ */
+function reloadWheelBrowser() {
+    const root = document.createDocumentFragment();
+    const browser = document.getElementById('wheel-select-browser');
+    if (browser == null || !(browser instanceof HTMLElement)) { return; }
+
+    for (const wheel of Object.values(getSavedWheels())) {
+        const wheelItem = document.createElement('li');
+        wheelItem.className = 'wheel-select-wheel';
+        wheelItem.textContent = wheel.name;
+
+        // Add event listeners (for loading the next wheel)
+        wheelItem.addEventListener('click', (event) => {
+            if (!(event instanceof MouseEvent)) { return; }
+            if (event.shiftKey || event.ctrlKey || event.metaKey) { return; }
+            loadWheelData(wheel);
+        });
+        
+        wheelItem.addEventListener('contextmenu', openWheelSelectMenu);
+
+        root.appendChild(wheelItem);
+    }
+
+    browser.replaceChildren(root);
 }
 
 
 
 
 /* ---------------- Wheel Entries ---------------- */
+
+/**
+ * Adds an entry to the exclusion list
+ * @param {string} wheelName The name of the wheel to exclude the entry from
+ * @param {string} entryValue The text (value) of the entry to exclude
+ */
+function addExcludedEntry(wheelName, entryValue) {
+    if (entryValue == "") { return; }
+    if (!excludedEntries.hasOwnProperty(wheelName)) {
+        excludedEntries[wheelName] = new Set();
+    }
+    excludedEntries[wheelName].add(entryValue);
+}
 
 /**
  * Adds the given wheel entry (to the primary wheel by default (index 0))
@@ -1756,10 +2509,10 @@ function rebuildTable() {
         const tr = document.createElement("tr");
 
         tr.innerHTML = `
-            <td><input class="textEntry" value="${wheelEntry.getValue()}"></td>
-            <td><input class="weightEntry" type="number" min="1" value="${wheelEntry.getWeight()}"></td>
-            <td><input class="tagEntry" value="${wheelEntry.getTags()}"></td>
-            <td><button class="deleteEntryBtn" data-i="${i}">✕</button></td>
+            <td><input class="text-entry" value="${wheelEntry.getValue()}"></td>
+            <td><input class="weight-entry" type="number" min="1" value="${wheelEntry.getWeight()}"></td>
+            <td><input class="tag-entry" value="${wheelEntry.getTags()}"></td>
+            <td><button class="delete-entry-button" data-i="${i}">✕</button></td>
         `;
 
         const wheelEntryCell = tr.children[0].firstChild;
@@ -1779,6 +2532,7 @@ function rebuildTable() {
 
                 if (editingWheel != null) { editingWheel.updateEntries(editingWheel.enabledTags); }
                 updateTagFilters();
+                updateWheelEntriesCount();
             };
         });
 
@@ -1791,21 +2545,43 @@ function rebuildTable() {
             rebuildTable();
         };
 
+        function addNewRow() {
+            addWheelEntry();
+
+            if (DOM_ELEMENTS.tableBody == null || 
+                DOM_ELEMENTS.tableBody.lastChild == null ||
+                !(DOM_ELEMENTS.tableBody.lastChild instanceof HTMLElement) ||
+                DOM_ELEMENTS.tableBody.lastChild.childNodes[1] == null ||
+                !(DOM_ELEMENTS.tableBody.lastChild.childNodes[1] instanceof HTMLElement) ||
+                DOM_ELEMENTS.tableBody.lastChild.childNodes[1].childNodes[0] == null ||
+                !(DOM_ELEMENTS.tableBody.lastChild.childNodes[1].childNodes[0] instanceof HTMLElement)
+            ) { return; }
+            DOM_ELEMENTS.tableBody.lastChild.childNodes[1].childNodes[0].focus();
+        }
+
         // Whenever <Enter> is pressed, it makes a new element
         wheelEntryCell.addEventListener("keydown", e => {
             // Typescript why
             if (!(e instanceof KeyboardEvent)) { return; }
             if (e.key === "Enter") {
                 e.preventDefault();
-                const newWheelEntry = addWheelEntry();
-
-                if (DOM_ELEMENTS.tableBody == null || 
-                    DOM_ELEMENTS.tableBody.lastChild == null ||
-                    !(DOM_ELEMENTS.tableBody.lastChild instanceof HTMLElement))
-                {
-                    return;
-                }
-                DOM_ELEMENTS.tableBody.lastChild.focus();
+                addNewRow();
+            }
+        });
+        weightCell.addEventListener("keydown", e => {
+            // Typescript why
+            if (!(e instanceof KeyboardEvent)) { return; }
+            if (e.key === "Enter") {
+                e.preventDefault();
+                addNewRow();
+            }
+        });
+        tagsCell.addEventListener("keydown", e => {
+            // Typescript why
+            if (!(e instanceof KeyboardEvent)) { return; }
+            if (e.key === "Enter") {
+                e.preventDefault();
+                addNewRow();
             }
         });
 
@@ -1859,21 +2635,22 @@ function rebuildTable() {
  * Populates the textModeArea with all editing wheel entries
  */
 function populateTextModeArea() {
-    if (editingWheel == null || DOM_ELEMENTS.textModeArea == null) { return; }
-    if (!(DOM_ELEMENTS.textModeArea instanceof HTMLTextAreaElement)) { return; }
+    if (editingWheel == null || DOM_ELEMENTS.textModeInput == null) { return; }
+    if (!(DOM_ELEMENTS.textModeInput instanceof HTMLTextAreaElement)) { return; }
     const lines = editingWheel.getWheelEntries().map(wheelEntry => {
         return wheelEntry.toText();
     });
-    DOM_ELEMENTS.textModeArea.value = lines.join("\n");
+    DOM_ELEMENTS.textModeInput.value = lines.join("\n");
+    updateTextArea();
 }
 
 /**
  * This overwrites all existing wheel entries with the text area entries.
  */
 function convertTextModeAreaToWheelEntries() {
-    if (DOM_ELEMENTS.textModeArea == null || !(DOM_ELEMENTS.textModeArea instanceof HTMLTextAreaElement)) { return; }
+    if (DOM_ELEMENTS.textModeInput == null || !(DOM_ELEMENTS.textModeInput instanceof HTMLTextAreaElement)) { return; }
     if (editingWheel == null) { return null; }
-    const lines = DOM_ELEMENTS.textModeArea.value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const lines = DOM_ELEMENTS.textModeInput.value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     const newEntries = lines.map(line => {
         const parts = line.split("|").map(p => p.trim());
         return new WheelEntry(
@@ -1885,6 +2662,140 @@ function convertTextModeAreaToWheelEntries() {
     editingWheel.setEntries(newEntries);
     rebuildTable();
     saveState();
+}
+
+
+/**
+ * Takes in the given line of text and parses it into formatted.
+ * @param {string} text A line of text in the text area
+ * @returns {string} The formatted text using spans.
+ */
+function parseTextLine(text) {
+    let result = "";
+    let i = 0;
+    const len = text.length;
+
+    let mode = 0; // 0=values, 1=num, 2=tags
+
+    /**
+     * Wraps the given token
+     * @param {string} token The token (text) to wrap
+     */
+    function wrapToken(token) {
+        // Check if token contains one or more {...} blocks
+        let buffer = "";
+        let j = 0;
+        while (j < token.length) {
+            if (token[j] === "{") {
+                // flush any buffer before {
+                if (buffer.length > 0) {
+                    if (mode === 0) result += wrapInSpan(buffer, "tm_value");
+                    else if (mode === 1) result += wrapInSpan(buffer, "tm_weight");
+                    else if (mode === 2) result += wrapInSpan(buffer, "tm_tag");
+                    buffer = "";
+                }
+                // collect {...}
+                let block = "{";
+                j++;
+                while (j < token.length) {
+                    if (token[j] === "\\") { // escape
+                        block += token[j];
+                        j++;
+                        if (j < token.length) block += token[j];
+                        j++;
+                        continue;
+                    }
+                    block += token[j];
+                    if (token[j] === "}") { j++; break; }
+                    j++;
+                }
+                result += wrapInSpan(block, "tm_subwheel");
+            } else {
+                buffer += token[j];
+                j++;
+            }
+        }
+        // flush remaining
+        if (buffer.length > 0) {
+            if (mode === 0) result += wrapInSpan(buffer, "tm_value");
+            else if (mode === 1) result += wrapInSpan(buffer, "tm_weight");
+            else if (mode === 2) result += wrapInSpan(buffer, "tm_tag");
+        }
+    }
+
+    while (i < len) {
+        let char = text[i];
+
+        // Handle escape
+        if (char === "\\") {
+            i++;
+            if (i < len) {
+                result += text[i];
+                i++;
+            }
+            continue;
+        }
+
+        // Handle pipe
+        if (char === "|") {
+            result += wrapInSpan("|", "tm_pipe");
+            mode++;
+            i++;
+            continue;
+        }
+
+        // Collect a token until space or pipe
+        let token = "";
+        while (i < len && text[i] !== " " && text[i] !== "|") {
+            if (text[i] === "\\") {
+                token += text[i];
+                i++;
+                if (i < len) token += text[i];
+                i++;
+                continue;
+            }
+            token += text[i];
+            i++;
+        }
+
+        if (token.length > 0) wrapToken(token);
+
+        // preserve space
+        if (i < len && text[i] === " ") { result += " "; i++; }
+    }
+
+    return result;
+}
+
+
+/**
+ * Formats all the text in the text area correctly
+ */
+function updateTextArea() {
+    if (DOM_ELEMENTS.textModeInput == null || !(DOM_ELEMENTS.textModeInput instanceof HTMLTextAreaElement)) { return; }
+    if (DOM_ELEMENTS.textModeVisible == null) { return; }
+    const text = DOM_ELEMENTS.textModeInput.value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    let output = "";
+    const entries = text.split("\n");
+    for (const entry of entries) {
+        output += parseTextLine(entry) + "\n";
+    }
+
+    DOM_ELEMENTS.textModeVisible.innerHTML = output;
+}
+
+
+/**
+ * Wraps the given text in a span with the provided class
+ * @param {string} text The text to be wrapped in a span
+ * @param {string} className The class to give the span
+ * @return {string} The span in text form.
+ */
+function wrapInSpan(text, className) {
+    return `<span class="${className}">${text}</span>`
 }
 
 
@@ -1938,8 +2849,10 @@ function makeTableDraggable() {
 function updateWheelEntriesCount() {
     if (editingWheel == null || DOM_ELEMENTS.wheelEntriesCountSpan == null) { return; }
     const totalWheelEntries = editingWheel.enabledWheelEntries.length;
+    DOM_ELEMENTS.wheelEntriesCountSpan.textContent = totalWheelEntries.toString();
+    if (editingWheel == null || DOM_ELEMENTS.wheelEntriesWeightSpan == null) { return; }
     const totalWeight = editingWheel.totalWeight;
-    DOM_ELEMENTS.wheelEntriesCountSpan.textContent = `${totalWheelEntries}, ${totalWeight}`;
+    DOM_ELEMENTS.wheelEntriesWeightSpan.textContent = totalWeight.toString();
     saveState();
 }
 
@@ -1957,7 +2870,7 @@ function updateTagFilters() {
     editingWheel.tags.forEach(tag => {
         if (editingWheel == null) { return; }
         const div = document.createElement("div");
-        div.className = "tagToggle";
+        div.className = "tag-toggle";
 
         if (editingWheel.enabledTags.has(tag)) {
             div.classList.add("active");
@@ -1985,9 +2898,21 @@ function updateTagFilters() {
  * Spins all necessary wheels
  */
 function spin() {
+    stopSpinning();
     clearSubWheels();
     if (editingWheel == null) { return; }
-    editingWheel.spin(Date.now());
+    editingWheel.spin(Date.now(), null, excludedEntries);
+}
+
+
+/**
+ * Makes all wheels stop spinning
+ */
+function stopSpinning() {
+    for (const wheel of wheels) {
+        wheel.stopSpinning();
+    }
+    excludedEntries = {};
 }
 
 
@@ -2020,7 +2945,7 @@ function update() {
         if (needsSubSpin) {
             restructureWheels();
             for (const wheel of wheels) {
-                if (!wheel.hasResult) { wheel.spin(Date.now()); }
+                if (!wheel.hasResult) { wheel.spin(Date.now(), null, excludedEntries); }
             }
         }
         else {
@@ -2031,9 +2956,9 @@ function update() {
         }
     }
 
-    if (DOM_ELEMENTS.fpsCounter != null) {
-        DOM_ELEMENTS.fpsCounter.textContent = String(Math.min(1000, Math.round(1000.0 / (performance.now() - startTime))));
-    }
+    // if (DOM_ELEMENTS.fpsCounter != null) {
+    //     DOM_ELEMENTS.fpsCounter.textContent = String(Math.min(1000, Math.round(1000.0 / (performance.now() - startTime))));
+    // }
 }
 
 
@@ -2044,12 +2969,12 @@ function showWinner() {
     if (DOM_ELEMENTS.winnerText == null || DOM_ELEMENTS.modal == null || editingWheel == null) { return; }
     const winningWheelText = editingWheel.getWinningWheelText();
     DOM_ELEMENTS.winnerText.textContent = winningWheelText || "";
-    DOM_ELEMENTS.modal.classList.remove("hidden");
+    showModal(DOM_ELEMENTS.modal);
 }
 
 
 /* ------------- Utilities ------------- */
-const cardContainer = document.getElementById("cardContainer");
+const cardContainer = document.getElementById("card-container");
 
 /**
  * Makes a "toast" card at the top of the screen showing msg for a short duration
@@ -2059,11 +2984,11 @@ const cardContainer = document.getElementById("cardContainer");
 function showCard(msg, seconds = 3) {
     if (cardContainer == null) { return; }
     const card = document.createElement("div");
-    card.className = "toastCard";
+    card.className = "toast-card";
     card.textContent = msg;
 
     const bar = document.createElement("div");
-    bar.className = "toastBar";
+    bar.className = "toast-bar";
 
     card.appendChild(bar);
     cardContainer.appendChild(card);
@@ -2100,9 +3025,8 @@ function restructureWheels() {
     const maxHeight = DOM_ELEMENTS.wheelWrapper.clientHeight;
     const wheelHeight = maxHeight / (subLevels+1);
 
-    // Settings button (always there)
-    let html = `<button id="settingsBtn" class="settings-btn">⚙</button>\n`;
-    html += `<canvas id="wheel-connections" width="650" height="650"></canvas>\n`;
+    // Connections canvas (always there)
+    let html = `<canvas id="wheel-connections" width="640" height="640"></canvas>\n`;
     // Build canvases row-by-row
     let i = 0;
     for (let level = 0; level <= subLevels; level++) {
@@ -2135,8 +3059,11 @@ function restructureWheels() {
         if (wheelConnections == null || !(wheelConnections instanceof HTMLCanvasElement)) { return; }
         const connectionsContext = wheelConnections.getContext("2d");
         if (connectionsContext == null || !(connectionsContext instanceof CanvasRenderingContext2D)) { return; }
-        const ox = wheelConnections.getBoundingClientRect().left;
-        const oy = wheelConnections.getBoundingClientRect().top;
+        const rect = wheelConnections.getBoundingClientRect();
+        wheelConnections.width = rect.width;
+        wheelConnections.height = rect.height;
+        const ox = rect.left;
+        const oy = rect.top;
         let parentRect, px, py, pr;
         let childRect, cx, cy, cr;
         let d, vx, vy;
@@ -2232,6 +3159,7 @@ function getSavedWheels() {
  */
 function setSavedWheels(json) {
     localStorage.setItem("savedWheels", JSON.stringify(json));
+    reloadWheelBrowser();
 }
 
 /**
@@ -2243,6 +3171,8 @@ function saveState() {
         "wheelState",
         JSON.stringify(editingWheel.toJSON())
     );
+    reloadWheelBrowser();
+    cacheWheel(editingWheel);
 }
 
 /**
@@ -2256,7 +3186,7 @@ function clearCache() {
  * Loads the most recently used wheel.
  * Also tries to update the wheel at the same time.
  */
-function loadState() {
+function loadMostRecentWheel() {
     const saved = localStorage.getItem("wheelState");
     if (saved && saved != "") {
         const wheel = JSON.parse(saved);
@@ -2285,18 +3215,98 @@ function loadWheelData(json) {
     if (DOM_ELEMENTS.canvas != null && DOM_ELEMENTS.canvas instanceof HTMLCanvasElement)
         editingWheel.setCanvas(DOM_ELEMENTS.canvas);
     rebuildTable();
+    populateTextModeArea();
+    restructureWheels();
+}
+
+
+/**
+ * Deletes the given wheel from the cache and more
+ * @param {string} wheelName The name of the wheel to delete
+ */
+function deleteWheel(wheelName) {
+    let all = JSON.parse(localStorage.getItem("savedWheels") || "{}");
+    delete all[wheelName];
+    setSavedWheels(all);
 }
 
 
 /* ---------------- Init/Main ---------------- */
+
+
+/**
+ * Adds a bunch of keybinds to the website including...
+ * Ctrl + S: save
+ * Ctrl + Shift + S: save as
+ * Ctrl + m : make new wheel
+ * Ctrl + ' ' : spin
+ */
+function addKeyBinds() {
+    document.addEventListener("keydown", (e) => {
+        // Ctrl + S : Save
+        if (e.key === "s" && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+            e.preventDefault();
+            save();
+        }
+        // Ctrl + Shift + S : Save As
+        if (e.key.toLowerCase() === "s" && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+            e.preventDefault();
+            openSaveAsModal();
+        }
+        // Ctrl + m: Make New Wheel
+        if (e.key.toLowerCase() === "m" && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+            e.preventDefault();
+            loadWheelData(Wheel.baseWheel().toJSON()); 
+            showCard("Made New Wheel!", 2);
+            saveState();
+        }
+        // Ctrl + ' ' : Spin
+        if (e.key.toLowerCase() === " " && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+            e.preventDefault();
+            spin();
+        }
+    }, false); 
+}
+
+
+/**
+ * Sets up tool tips for any element with the .has-tooltip class
+ */
+function setupTooltips() {
+    document.querySelectorAll('.has-tooltip').forEach(hasTooltip => {
+        const tooltip = hasTooltip.querySelector('.tooltip');
+        if (!tooltip) return;
+
+        hasTooltip.addEventListener('mouseenter', () => {
+            if (!(tooltip instanceof HTMLElement)) { return; }
+            const rect = hasTooltip.getBoundingClientRect();
+
+            document.body.appendChild(tooltip);
+            tooltip.style.display = 'block';
+            tooltip.style.position = 'fixed';
+
+            tooltip.style.left = rect.right + 'px';
+            tooltip.style.top = (rect.top - tooltip.offsetHeight) + 'px';
+        });
+
+        hasTooltip.addEventListener('mouseleave', () => {
+            if (!(tooltip instanceof HTMLElement)) { return; }
+            tooltip.style.display = 'none';
+            hasTooltip.appendChild(tooltip); // put it back
+        });
+    });
+}
+
+
 document.addEventListener("DOMContentLoaded", () => {
+    cacheSavedWheels();
     editingWheel = Wheel.baseWheel();
     wheels.push(editingWheel)
     // Update all cached wheels
     updateSavedWheels();
     // Attempt to load wheel from cache
-    loadState();
-    initializeDOMStuff(editingWheel, saveState, spin, cacheSavedWheels);
+    loadMostRecentWheel();
+    initializeDOMStuff(spin);
 
     // Toggle Text Mode
     if (DOM_ELEMENTS.textModeSwitch != null)
@@ -2310,30 +3320,44 @@ document.addEventListener("DOMContentLoaded", () => {
         textModeActive = DOM_ELEMENTS.textModeSwitch.checked;
 
         if (textModeActive) {
-            DOM_ELEMENTS.tableBody.parentElement.classList.add("hidden"); // hide table container
+            if (DOM_ELEMENTS.tableBody.parentElement.parentElement != null)
+                DOM_ELEMENTS.tableBody.parentElement.parentElement.classList.add("hidden"); // hide table container
             DOM_ELEMENTS.textModeArea.classList.remove("hidden");
             populateTextModeArea();
         } else {
-            DOM_ELEMENTS.tableBody.parentElement.classList.remove("hidden");
+            if (DOM_ELEMENTS.tableBody.parentElement.parentElement != null)
+                DOM_ELEMENTS.tableBody.parentElement.parentElement.classList.remove("hidden");
             DOM_ELEMENTS.textModeArea.classList.add("hidden");
             convertTextModeAreaToWheelEntries(); // sync back into table
         }
     };
 
     // Autosave while typing
-    if (DOM_ELEMENTS.textModeArea != null)
-    DOM_ELEMENTS.textModeArea.addEventListener("input", () => {
+    if (DOM_ELEMENTS.textModeInput != null)
+    DOM_ELEMENTS.textModeInput.addEventListener("input", () => {
         convertTextModeAreaToWheelEntries();
     });
 
     // Shuffle button
-    if (DOM_ELEMENTS.shuffleBtn != null)
-    DOM_ELEMENTS.shuffleBtn.onclick = () => {
+    if (DOM_ELEMENTS.shuffleButton != null)
+    DOM_ELEMENTS.shuffleButton.onclick = () => {
         if (editingWheel == null) { return; }
         editingWheel.shuffleEntries();
         rebuildTable();
         showCard("Shuffled!", 1);
     };
 
+    // Force stop spinning
+    document.addEventListener("keydown", (e) => {
+        if (!(e instanceof KeyboardEvent)) { return; }
+        if (e.key === "Escape") {
+            stopSpinning();
+        }
+    });
+
     setInterval(update, 10);
+    restructureWheels();
+
+    addKeyBinds();
+    setupTooltips();
 });

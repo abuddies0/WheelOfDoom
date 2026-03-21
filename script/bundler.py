@@ -1,7 +1,8 @@
 import re
+from pathlib import Path
 
 
-MAIN_PATH = "C:\\Users\\abudd\\OneDrive\\Desktop\\Random Nonsense\\Web Dev\\WheelOfDoom\\script\\"
+MAIN_PATH = str(Path(__file__).resolve())[0:-10]
 
 
 r_ignore = r'^import|^//@ts-check'
@@ -12,7 +13,7 @@ def write_stuff(to_read, to_write):
         if re.search(r_ignore, line):
             continue
         else:
-            to_paste = str(line).replace("export function", "function").replace("export class", "class").replace("export const", "const")
+            to_paste = str(line).replace("export function", "function").replace("export class", "class").replace("export const", "const").replace("export let", "let")
             to_write.write(to_paste)
 
 
@@ -21,17 +22,21 @@ def main():
     main = open(f"{MAIN_PATH}main.js", "r")
     wheel = open(f"{MAIN_PATH}wheel.js", "r")
     update = open(f"{MAIN_PATH}update.js", "r")
+    auth = open(f"{MAIN_PATH}auth.js", "r")
 
     bundled = open(f"{MAIN_PATH}bundled.js", "w")
 
     write_stuff(dom_stuff, bundled)
     write_stuff(wheel, bundled)
     write_stuff(update, bundled)
+    write_stuff(auth, bundled)
     write_stuff(main, bundled)
 
     dom_stuff.close()
     main.close()
     wheel.close()
+    update.close()
+    auth.close()
 
     bundled.close()
 

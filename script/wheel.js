@@ -1,6 +1,6 @@
 //@ts-check
 
-import { getSavedWheels } from "./main.js";
+import { getSavedWheels, addExcludedEntry } from "./main.js";
 
 /** @typedef {import("./update.js").SavedWheelEntry} SavedWheelEntry */
 /** @typedef {import("./update.js").WheelSettings} WheelSettings */
@@ -28,8 +28,8 @@ export class Wheel {
         spinStrength: 12,
         spinDuration: 2000,
         colorScheme: "classic",
-        spinSound: "metalpipe",
-        winSound: "yippee"
+        spinSound: "classic",
+        winSound: "jonnahwhimsy"
     };
 
     /** @type {Record<string, (i:number, l:number)=>string>} All the schemes this wheel can take*/
@@ -42,14 +42,17 @@ export class Wheel {
 
     /** @type {Record<string, HTMLAudioElement>} All the sounds that can be used while spinning */
     static SPIN_SOUNDS = {
-        "metalpipe": new Audio("asset/sound/metal_pipe.mp3"),
-        "silence": new Audio("asset/sound/silence.mp3")
+        classic: new Audio("asset/sound/spin/classic.mp3"),
+        metalpipe: new Audio("asset/sound/spin/metal_pipe.mp3"),
+        silence: new Audio("asset/sound/silence.mp3")
     };
 
     /** @type {Record<string, HTMLAudioElement>} All the sounds that can be used after winning */
     static WIN_SOUNDS = {
-        "yippee": new Audio("asset/sound/yippee.mp3"),
-        "silence": new Audio("asset/sound/silence.mp3")
+        jonnahwhimsy: new Audio("asset/sound/win/jonnah_whimsy.mp3"),
+        wow: new Audio("asset/sound/win/wow.mp3"),
+        yippee: new Audio("asset/sound/win/yippee.mp3"),
+        silence: new Audio("asset/sound/silence.mp3")
     };
 
     /** @type {Record<string, Wheel>} A pointer to a collection of cached wheels (for speed ups) */
@@ -75,8 +78,9 @@ export class Wheel {
      * @param {string|null} name
      * @param {Array<WheelEntry>} wheelEntries 
      * @param {HTMLCanvasElement|null} canvas 
+     * @param {boolean} makeBuffer True if a buffer should be made. False otherwise.
      */
-    constructor(name, wheelEntries, canvas) {
+    constructor(name, wheelEntries, canvas, makeBuffer=false) {
         if (!Wheel.INITIALIZED) {
             Wheel.initialize_statics();
         }
@@ -154,9 +158,14 @@ export class Wheel {
         this.subLevel = 0;
         /** @type {Wheel|null} The parent of this wheel */
         this.parentWheel = null;
+        /** @type {boolean} True if this entries on this wheel are exclusive (as in they can't be reobtained by other exclusives) */
+        this.isExclusive = false;
+
+        /** @type {boolean} True if this wheel is from the cache. False otherwise. */
+        this.isCached = false;
 
         // Initially created with EVERY TAG enabled
-        this.updateEntries(this.getAssociatedTags());
+        this.updateEntries(this.getAssociatedTags(), makeBuffer);
     }
 
 
@@ -175,26 +184,61 @@ export class Wheel {
     /**
      * Creates a new wheel exclusively from JSON
      * @param {SavedWheel} json The JSON obtained from wheel.toJSON()
-     * @param {boolean} useCache True if the program should first check the cache for wheels matching this name.
+     * @param {boolean} useCache True if the program should first check the cache for wheels matching this name. (default=false)
+     * @param {boolean} makeBuffer True if the new wheel should automatically make a cache. (default=true)
      * @return {Wheel} The wheel that contains that json data
      */
-    static fromJSON(json, useCache=false) {
+    static fromJSON(json, useCache=false, makeBuffer=true) {
         // Check cache first
         if (useCache && Wheel.CACHED_WHEELS.hasOwnProperty(json.name)) {
-            
+            const newWheel = Wheel.baseWheel();
+            newWheel.fromCache(Wheel.CACHED_WHEELS[json.name]);
+            return newWheel;
         }
         // Ignore cache and make new wheel
         const newWheel = Wheel.baseWheel();
-        newWheel.fromJSON(json);
+        newWheel.fromJSON(json, makeBuffer);
         return newWheel;
+    }
+
+
+    /**
+     * Overwrites all the data of this current wheel
+     * This copies pretty much everything except the literal canvas
+     * @param {Wheel} cachedWheel The cached wheel to overwrite with
+     */
+    fromCache(cachedWheel) {
+        // console.log("Loaded wheel from cache!");
+
+        this.setName(cachedWheel.name);
+        this.setEntries(cachedWheel.wheelEntries);
+        this.enabledTags = cachedWheel.enabledTags;
+        this.isCached = true;
+        this.riggedWheelEntry = cachedWheel.riggedWheelEntry;
+        this.riggedAmount = cachedWheel.riggedAmount;
+
+        this.updateTags();
+        this.updateEntries(this.enabledTags, false);
+
+        this.buffered = true;
+
+        this.spinStrength = cachedWheel.spinStrength;
+        this.spinDuration = cachedWheel.spinDuration;
+        this.colorScheme = cachedWheel.colorScheme;
+        this.spinSound = cachedWheel.spinSound;
+        this.winSound = cachedWheel.winSound;
+
+        this.canvasBuffer = cachedWheel.canvasBuffer;
+        this.contextBuffer = cachedWheel.contextBuffer;
     }
 
 
     /**
      * Overwrites all the data of this current wheel.
      * @param {SavedWheel} json The json to overwrite the wheel with.
+     * @param {boolean} makeBuffer True if the program should automatically make a buffer. (default=true)
      */
-    fromJSON(json) {
+    fromJSON(json, makeBuffer=true) {
         this.setName(json.name);
         this.setEntries(json.wheelEntries.map(savedEntry => WheelEntry.fromJSON(savedEntry)).filter(e => e !== null));
         if (json.enabledTags instanceof Array) { this.enabledTags = new Set(json.enabledTags); }
@@ -202,7 +246,7 @@ export class Wheel {
         this.riggedAmount = json.riggedAmount;
 
         this.updateTags();
-        this.updateEntries(this.enabledTags);
+        this.updateEntries(this.enabledTags, makeBuffer);
 
         this.spinStrength = json.settings.spinStrength;
         this.spinDuration = json.settings.spinDuration;
@@ -214,25 +258,42 @@ export class Wheel {
 
     /**
      * This should only be called when the wheel needs to first be drawn.
+     * @param {boolean} force Forces the wheel to be redrawn anyway
      */
-    makeBuffer() {
+    makeBuffer(force=false) {
+        // Cached wheels cannot be rebuffered
+        if (this.isCached) {
+            return;
+        }
+        // console.log(`Buffered wheel named ${this.name} with ${this.wheelEntries.length} entries. :p`);
+
         this.buffered = true;
-        if (this.canvas == null || this.contextBuffer == null) return;
-        this.canvasBuffer.width = this.canvas.width;
-        this.canvasBuffer.height = this.canvas.height;
+        let canvasToUse = null;
+        if (this.canvas != null) {
+            canvasToUse = this.canvas;
+        }
+        else if (this.canvasBuffer != null) {
+            canvasToUse = this.canvasBuffer;
+        }
+        else {
+            return;
+        }
+        if (this.contextBuffer == null) return;
+        this.canvasBuffer.width = canvasToUse.width;
+        this.canvasBuffer.height = canvasToUse.height;
         // Do not render if there are no wheel entries
         if (this.enabledWheelEntries.length == 0) return;
         // Clear the canvas
-        this.contextBuffer.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.contextBuffer.clearRect(0, 0, canvasToUse.width, canvasToUse.height);
         // Choose the correct color scheme
         const colorSchemeFunction = this.colorScheme || Wheel.COLOR_SCHEMES.classic;
 
         // Buffer, center, and rotate the wheel
-        const horOffset = this.canvas.width * 0.025;    // 2.5% padding
-        const verOffset = this.canvas.height* 0.025;    // 2.5% padding
-        const radius = this.canvas.height * 0.475;      // 95% of space is wheel
+        // const horOffset = this.canvas.width * 0.025;    // 2.5% padding
+        // const verOffset = this.canvas.height* 0.025;    // 2.5% padding
+        const radius = canvasToUse.height * 0.475;      // 95% of space is wheel
         this.contextBuffer.save();
-        this.contextBuffer.translate(this.canvas.width*0.5, this.canvas.height*0.5);   // Center
+        this.contextBuffer.translate(canvasToUse.width*0.5, canvasToUse.height*0.5);   // Center
         // No rotation (0 degrees)
 
         // Start drawing slices
@@ -253,23 +314,31 @@ export class Wheel {
             this.contextBuffer.save();
             this.contextBuffer.rotate(startAngle - (this.sliceAngles[i])*0.5);
 
-            // TODO: Mathematically determine font
-            this.contextBuffer.font = "100px system-ui";
-            const widthScale = this.contextBuffer.measureText(text).width / 100;
-            const arcLength = radius * this.sliceAngles[i];
+            // Only use lines if the slices will be too small
+            if (this.sliceAngles[i] < 0.05) {
+                this.contextBuffer.fillStyle = "#111";
+                const offset = Math.max(1-text.length*0.025, 0.3) * radius;
+                this.contextBuffer.fillRect(offset, 0, radius*0.96-offset, this.sliceAngles[i]*40);
+            }
+            else {
+                // TODO: Mathematically determine font
+                this.contextBuffer.font = "100px system-ui";
+                const widthScale = this.contextBuffer.measureText(text).width / 100;
+                const arcLength = radius * this.sliceAngles[i];
 
-            const sizeFromWidth = maxWidth / widthScale;
-            const sizeFromArc = arcLength; // height ≈ fontSize
+                const sizeFromWidth = maxWidth / widthScale;
+                const sizeFromArc = arcLength; // height ≈ fontSize
 
-            this.contextBuffer.font = `${Math.max(6, Math.min(sizeFromWidth, sizeFromArc, 22))}px system-ui`;
+                this.contextBuffer.font = `${Math.max(6, Math.min(sizeFromWidth, sizeFromArc, 22))}px system-ui`;
 
-            this.contextBuffer.fillStyle = "#111";
-            this.contextBuffer.textAlign = "right";
-            this.contextBuffer.textBaseline = "middle";
-            this.contextBuffer.translate(radius*0.99,0);
-            this.contextBuffer.fillText(text,0,0);
-
+                this.contextBuffer.fillStyle = "#111";
+                this.contextBuffer.textAlign = "right";
+                this.contextBuffer.textBaseline = "middle";
+                this.contextBuffer.translate(radius*0.99,0);
+                this.contextBuffer.fillText(text,0,0);
+            }
             this.contextBuffer.restore();
+            
 
             startAngle -= this.sliceAngles[i];
         }
@@ -291,7 +360,7 @@ export class Wheel {
         this.context.save();
         this.context.translate(radius, radius);
         this.context.rotate(this.rotation);
-        this.context.drawImage(this.canvasBuffer, -radius, -radius);
+        this.context.drawImage(this.canvasBuffer, -radius, -radius, this.canvas.width, this.canvas.height);
         this.context.restore();
 
         // Draw pointer
@@ -314,8 +383,9 @@ export class Wheel {
      * Spins the wheel at the given strength and duration
      * @param {number} time The time the wheel is spun in milliseconds
      * @param {string|null} riggedValue The rigged value of the wheel to land on.
+     * @param {Record<string, Set<string>>} excludedEntries A record of all entries that are impossible to obtain {WHEEL_NAME: [ENTRY_1, ENTRY_2, ...]}
      */
-    spin(time, riggedValue=null) {
+    spin(time, riggedValue=null, excludedEntries={}) {
         console.log("SPIN... THAT... WHEELLLLL!");
         if (this.isSpinning) { return; }
         this.isSpinning = true;
@@ -324,7 +394,7 @@ export class Wheel {
         this.spinEndTime = this.spinStartTime + this.spinDuration;
 
         // Pull wheel entry and set rotation accordingly
-        const pulled = this.pullWeightedWheelEntry();
+        const pulled = this.pullWeightedWheelEntry(excludedEntries);
         this.winningWheelEntry = pulled["wheelEntry"];
         // Failed to pull
         if (this.winningWheelEntry == null) {
@@ -334,7 +404,7 @@ export class Wheel {
         }
         // Add all necessary subwheels
         this.subWheels = {};
-        this.addSubWheels(Array.from(this.winningWheelEntry.getValue().matchAll(/(?<=\{).+?(?=\})/g)).map(e => e[0]));
+        this.addSubWheels(Wheel.findSubWheels(this.winningWheelEntry.value));
         if (Object.keys(this.subWheels).length != 0) { this.needsSubSpin = true; }
         // Setup rotation shenanigans
         this.rotation = this.rotation % (2 * Math.PI);
@@ -345,7 +415,64 @@ export class Wheel {
 
         this.spinSound.play();
         this.initialRotation = this.rotation;
+        if (this.isExclusive) { addExcludedEntry(this.getName(), this.winningWheelEntry.value); }
     }
+    
+
+    /**
+     * Forces the wheel to stop spinning.
+     * Does not return any results.
+     */
+    stopSpinning() {
+        this.isSpinning = false;
+        this.hasResult = false;
+        this.spinSound.pause();
+        this.winSound.pause();
+    }
+
+
+    /**
+     * Finds all subwheels from the given text
+     * @param {string} text The text from the entry to scrape the subwheels of
+     * @return {Array<string>} An array of all the subwheels without the curly braces
+     */
+    static findSubWheels(text) {
+        let subWheels = new Array();
+        let i = 0;
+        let inSubWheel = false;
+        let currentSubWheel = "";
+        let c;
+        while (i < text.length) {
+            c = text.charAt(i);
+            if (inSubWheel) {
+                if (c == '\\') {
+                    // just skip to the next place
+                    i++;
+                    currentSubWheel += text.charAt(i);
+                }
+                else if (c == '}') {
+                    inSubWheel = false;
+                    subWheels.push(currentSubWheel);
+                    currentSubWheel = "";
+                }
+                else {
+                    currentSubWheel += c;
+                }
+            }
+            // Delimiter
+            if (c == '\\') {
+                // just skip to the next place
+                i++;
+            }
+            else if (c == '{') {
+                inSubWheel = true;
+            }
+            i++;
+        }
+        
+        return subWheels;
+    }
+
 
     static BAGEL = 0;
 
@@ -357,17 +484,25 @@ export class Wheel {
         // Only add subwheels if they exist
         const savedWheels = getSavedWheels();
         const names = Object.keys(savedWheels);
+        let isExclusive = false;
 
-        for (const subName of wheelNames) {
+        for (let subName of wheelNames) {
+            isExclusive = false;
+            // Handle exclusives
+            if (subName.length > 0 && subName.charAt(0) == "!") {
+                isExclusive = true;
+                subName = subName.substring(1, subName.length);
+            }
             // Skip if the wheel doesn't exist
             if (!names.includes(subName)) {
                 console.log(`Wheel {${subName}} doesn't exist.`)
                 continue;
             }
-            const subWheel = Wheel.fromJSON(savedWheels[subName]);
+            const subWheel = Wheel.fromJSON(savedWheels[subName], true);
             subWheel.isSub = true;
             subWheel.subLevel = this.subLevel + 1;
             subWheel.parentWheel = this;
+            subWheel.isExclusive = isExclusive;
             this.subWheels[String(Wheel.BAGEL)] = subWheel;
             Wheel.BAGEL++;
         }
@@ -403,9 +538,10 @@ export class Wheel {
 
     /**
      * Pulls a wheel entry using the weight system.
+     * @param {Record<string, Set<string>>} excludedEntries A record of all entries that are impossible to obtain {WHEEL_NAME: [ENTRY_1, ENTRY_2, ...]}
      * @return @typedef {Object} @property {number} weight @property {WheelEntry|null} wheelEntry The wheel entry that got pulled and the winning weight
      */
-    pullWeightedWheelEntry() {
+    pullWeightedWheelEntry(excludedEntries) {
         // Account for rigging
         if (this.riggedAmount > 0 && this.riggedWheelEntry && this.enabledWheelEntries.map(wheelEntry => wheelEntry.getValue()).includes(this.riggedWheelEntry.getValue())) {
             this.riggedAmount--;
@@ -421,7 +557,37 @@ export class Wheel {
             return {"weight": weight, "wheelEntry": this.riggedWheelEntry};
         }
 
-        // Not rigged (or failed to rig)
+        // Not rigged (or failed to rig), but exclusive
+        if (this.isExclusive && excludedEntries.hasOwnProperty(this.getName())) {
+            // Filter out all excluded wheel entries
+            const filteredWheelEntries = this.wheelEntries.map((wheelEntry) => {
+                if (excludedEntries[this.getName()].has(wheelEntry.getValue())) {
+                    return;
+                }
+                else {
+                    return wheelEntry;
+                }
+            });
+            // If there are no entries left, return nothing
+            if (filteredWheelEntries.length == 0) { return {"weight": 0, "wheelEntry": new WheelEntry("", 0, new Array())}; }
+           
+            const tempTotalWeight = filteredWheelEntries.reduce((acc, wheelEntry) => {
+                if (!wheelEntry) { return acc; }
+                return acc + wheelEntry.getWeight();
+            }, 0);
+            const winningWeight = tempTotalWeight * Math.random();
+            let tempWeight = winningWeight;
+
+            for (const wheelEntry of filteredWheelEntries) {
+                if (!wheelEntry) { continue; }
+                tempWeight -= wheelEntry.getWeight();
+                if (tempWeight <= 0) {
+                    return {"weight": winningWeight, "wheelEntry": wheelEntry};
+                }
+            }
+        }
+
+        // Not rigged or exclusive
         const winningWeight = this.totalWeight * Math.random();
         let tempWeight = winningWeight;
 
@@ -503,8 +669,9 @@ export class Wheel {
     /**
      * Enables and disables wheel entries based on enabled tags
      * @param {Set<string>} enabledTags A list of all enabled tags.
+     * @param {boolean} refreshBuffer True if the buffer should be redrawn. (default=true)
      */
-    updateEntries(enabledTags) {
+    updateEntries(enabledTags, refreshBuffer=true) {
         // Fix enabled wheel entries (based on tags)
         this.enabledWheelEntries = new Array();
         for (const wheelEntry of this.wheelEntries) {
@@ -532,7 +699,9 @@ export class Wheel {
         }
         this.tags.delete("");
 
-        this.makeBuffer();
+        if (refreshBuffer) {
+            this.makeBuffer();
+        }   
     }
 
 
@@ -870,6 +1039,17 @@ export class Wheel {
         this.context = canvas ? canvas.getContext("2d") : null;
         this.wheelWidth = this.canvas ? this.canvas.width-20 : 600;
         this.wheelHeight = this.canvas ? this.canvas.height-20 : 600;
+    }
+
+
+    /**
+     * Sets the buffer canvas of this wheel.
+     * Typically used for cached wheels.
+     * @param {HTMLCanvasElement} canvasBuffer 
+     */
+    setCanvasBuffer(canvasBuffer) {
+        this.canvasBuffer = canvasBuffer;
+        this.contextBuffer = this.canvasBuffer.getContext("2d");
     }
 
 
