@@ -22,17 +22,21 @@ def main():
     main = open(f"{MAIN_PATH}main.js", "r")
     wheel = open(f"{MAIN_PATH}wheel.js", "r")
     update = open(f"{MAIN_PATH}update.js", "r")
+    auth = open(f"{MAIN_PATH}auth.js", "r")
 
     bundled = open(f"{MAIN_PATH}bundled.js", "w")
 
     write_stuff(dom_stuff, bundled)
     write_stuff(wheel, bundled)
     write_stuff(update, bundled)
+    write_stuff(auth, bundled)
     write_stuff(main, bundled)
 
     dom_stuff.close()
     main.close()
     wheel.close()
+    update.close()
+    auth.close()
 
     bundled.close()
 

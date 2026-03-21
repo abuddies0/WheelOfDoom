@@ -1,6 +1,7 @@
  // @ts-check
 import { Wheel } from "./wheel";
 import { deleteWheel, editingWheel, setSavedWheels, getSavedWheels, showCard, loadWheelData, saveState, updateTextArea } from "./main.js";
+import { saveWheelsToDrive, loadWheelsFromDrive } from "./auth.js";
 
  export const DOM_ELEMENTS = {
      canvas: document.getElementById("main-wheel-canvas"),
@@ -21,6 +22,8 @@ import { deleteWheel, editingWheel, setSavedWheels, getSavedWheels, showCard, lo
      newWheelButton: document.getElementById("new-wheel-button"),
      saveWheelButton: document.getElementById("save-wheel-button"),
      saveAsWheelButton: document.getElementById("save-as-wheel-button"),
+     driveSaveButton: document.getElementById("save-to-drive-button"),
+     driveLoadButton: document.getElementById("load-from-drive-button"),
      copyButton: document.getElementById("copy-button"),
      importFile: document.getElementById("import-file"),
      importButton: document.getElementById("import-button"),
@@ -553,6 +556,18 @@ export function initializeDOMStuff(spin) {
         DOM_ELEMENTS.saveWheelButton.onclick = () => {
             save();
         };
+    }
+
+    if (DOM_ELEMENTS.driveSaveButton != null) {
+        DOM_ELEMENTS.driveSaveButton.onclick = () => {
+            saveWheelsToDrive();
+        }
+    }
+
+    if (DOM_ELEMENTS.driveLoadButton != null) {
+        DOM_ELEMENTS.driveLoadButton.onclick = () => {
+            loadWheelsFromDrive();
+        }
     }
 
     /* ------------ WHEEL SETTINGS ------------ */

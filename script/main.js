@@ -960,7 +960,6 @@ function setupTooltips() {
 
 document.addEventListener("DOMContentLoaded", () => {
     cacheSavedWheels();
-
     editingWheel = Wheel.baseWheel();
     wheels.push(editingWheel)
     // Update all cached wheels
